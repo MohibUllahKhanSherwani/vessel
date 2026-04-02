@@ -1,38 +1,71 @@
 # Vessel Backend Implementation Plan
 
+## Status Snapshot
+
+- Current repo state: `backend/` currently contains only this plan file. The solution and all .NET projects still need to be created.
+- Handoff goal: another chat should be able to resume work from this file without re-deciding architecture, data contracts, or environment setup.
+- Working directory for every command below unless stated otherwise: `d:\Projects\vessel\backend`
+
+## Progress Tracker
+
+| Phase | Status | Notes |
+|---|---|---|
+| 1. Bootstrap And Local Setup | Not started | |
+| 2. Domain Model And Persistence | Not started | |
+| 3. Authentication And Authorization | Not started | |
+| 4. Areas And Rate Intelligence | Not started | |
+| 5. Provider Discovery | Not started | |
+| 6. Booking Engine And Idempotency | Not started | |
+| 7. Price Alerts And Background Jobs | Not started | |
+| 8. Admin Analytics | Not started | |
+| 9. AI And RAG | Not started | |
+| 10. Hardening And Delivery | Not started | |
+
+Update this table whenever a phase starts or finishes.
+
 ## Working Setup
 
 - Target framework: `net10.0`
-- Backend style for v1: ASP.NET Core 10 Web API with controllers
-- Database: PostgreSQL
-- Vector store: `pgvector`
+- Pin the exact installed SDK with `global.json` after the first successful local build.
+- Backend style for v1: ASP.NET Core 10 Web API with controllers only
+- Database: Supabase PostgreSQL for normal development, local `postgres-test` only for isolated integration tests
+- Vector store: `pgvector` in PostgreSQL
 - Cache: Redis
+- AI provider: Google Gemini via Semantic Kernel
 - Real-time: SignalR
 - Background jobs: Hangfire
 - Tests: xUnit
+- Secrets: use `dotnet user-secrets` or environment variables for local secrets. Do not commit real connection strings, JWT keys, seed passwords, or Gemini keys into `appsettings*.json`.
 
 ## Working Rules
 
 - Use controllers for v1. Do not mix minimal APIs into the same backend while the core flows are still being built.
-- Keep domain entities in `Vessel.Core`.
-- Keep DTOs, validators, service interfaces, and persistence interfaces in `Vessel.Application`.
-- Keep EF Core, Redis, Hangfire, and external integrations in `Vessel.Infrastructure`.
-- Keep use-case service implementations in `Vessel.Application` and infrastructure implementations in `Vessel.Infrastructure`.
-- `Vessel.API` is the composition root. Controllers should not use `DbContext` directly.
-- Do not add a generic repository just to match a pattern name. If a use case needs data-access abstractions, add small feature-specific repository or query interfaces only.
+- Keep domain entities, enums, and domain exceptions in `Vessel.Core`.
+- Keep DTOs, validators, service interfaces, and repository/query interfaces in `Vessel.Application`.
+- Keep EF Core, Redis, Hangfire, SignalR infrastructure, auth persistence, and external integrations in `Vessel.Infrastructure`.
+- Keep Semantic Kernel orchestration and embedding logic in `Vessel.AI`.
+- `Vessel.API` is the composition root. Controllers must not use `DbContext` directly.
+- Do not add a generic repository. Add small feature-specific repository/query abstractions only when a use case needs them.
+- Every concrete dependency is resolved through an interface.
 - Public registration creates `Consumer` users only.
-- Use UTC for all timestamps.
+- Provider and Admin accounts are provisioned manually or via Development-only seed data in v1.
+- Use UTC everywhere.
 - Keep all I/O async.
+- Return plain DTOs on success and `ProblemDetails` on failures. Do not introduce a generic response envelope in v1.
 
-### Routing And Constraints
+### Routing, Validation, And Status Codes
 
-- Use **attribute routing** on every controller. Do not rely on conventional routing.
-- Decorate each controller class with `[Route("api/[controller]")]` and `[ApiController]`.
-- Decorate each action with explicit HTTP-method attributes: `[HttpGet]`, `[HttpPost]`, `[HttpPatch]`, `[HttpDelete]`.
-- Apply **route constraints** on path parameters wherever the type is known. Examples:
-  - `[HttpGet("{id:guid}")]`
-  - `[HttpGet("{areaId:guid}/{providerId:guid}")]`
-- Validate **query parameters** using FluentValidation on the request DTO. Bind simple scalar parameters directly with `[FromQuery]` and provide defaults where applicable, e.g. `[FromQuery] int days = 30`.
+- Use attribute routing on every controller. Do not rely on conventional routing.
+- Decorate each controller class with `[Route("api/[controller]")]` and `[ApiController]` unless a different explicit route is clearly justified.
+- Decorate each action with explicit HTTP-method attributes such as `[HttpGet]`, `[HttpPost]`, `[HttpPatch]`, and `[HttpDelete]`.
+- Apply route constraints on path parameters wherever the type is known, for example `[HttpGet("{id:guid}")]`.
+- For multi-parameter query inputs that need validation, bind a request DTO with `[FromQuery]` instead of separate scalar parameters.
+- Reserve direct scalar `[FromQuery]` parameters for very simple inputs that only rely on built-in type binding.
+- Register the validation pipeline in Phase 1 so validators added in later phases are automatically enforced.
+- Collection endpoints return `200 OK` with an empty array when the parent resource exists but has no rows.
+- Use `404 Not Found` only when the addressed resource does not exist, for example an unknown `areaId` or `providerId`.
+- Resource creation endpoints return `201 Created`.
+- Use `409 Conflict` for uniqueness or idempotency conflicts.
 - Never expose an endpoint without an explicit route template.
 
 ### Swagger / OpenAPI
@@ -47,8 +80,8 @@
 ### Dependency Injection Strategy (Mock-First)
 
 - Every service and repository is consumed through its interface. Concrete classes are never injected directly.
-- In early phases, register **mock / stub implementations** for services that do not exist yet. This lets controllers compile, Swagger shows the full API surface, and integration tests can run against predictable data.
-- As each phase is completed, **swap the mock registration for the real implementation** in `ServiceCollectionExtensions`. The controller code does not change.
+- In early phases, register mock or stub implementations for services that do not exist yet. This lets controllers compile, Swagger show the intended API surface, and integration tests run against predictable data.
+- As each phase is completed, swap the mock registration for the real implementation in `ServiceCollectionExtensions`. Controller code should not change.
 - Progression pattern per phase:
   1. Define the interface in `Vessel.Application`.
   2. Create a `Mock___Service` in `Vessel.Infrastructure/Mocks` that returns hard-coded in-memory data.
@@ -56,25 +89,107 @@
   4. Build and test the controller against the mock.
   5. Implement the real service.
   6. Replace the mock registration with the real one.
-  7. Move the mock class to `Vessel.Tests/Mocks/` for integration test use. Delete it from `Vessel.Infrastructure/Mocks/`.
+  7. Move the mock class to `Vessel.Tests/Mocks/` for integration test use and remove it from the production project.
 - Store mock implementations in `Vessel.Infrastructure/Mocks/`.
+
+## V1 Clarifications To Prevent Rework
+
+- Provider discovery returns one row per active provider-area pair, not one row per provider company.
+- `distanceKm` in discovery results means user-to-area-centroid distance, not provider depot distance, because provider coordinates are not part of the v1 model.
+- Price alerts compare a total price for a chosen volume, not a raw price-per-gallon threshold. Use the field name `ThresholdTotalPrice` instead of `ThresholdPrice`.
+- Rate change notifications can be global broadcasts in v1. Alert-trigger notifications must be user-targeted with SignalR so one consumer does not receive another consumer's alert.
+- AI in v1 uses only Vessel's internal data such as rates and alert events. External news ingestion mentioned in the PRD is intentionally postponed.
+- No pagination is planned for v1 list endpoints. Return stable sort orders instead:
+  - bookings and alerts: newest first
+  - rates: cheapest first, then provider name
+  - provider discovery: nearest first, then cheapest
 
 ## Solution Layout
 
 | Project | Type | Purpose |
 |---|---|---|
 | `Vessel.Core` | Class library | Entities, enums, domain exceptions |
-| `Vessel.Application` | Class library | DTOs, validators, service interfaces, persistence interfaces, business rules |
+| `Vessel.Application` | Class library | DTOs, validators, service interfaces, repository/query interfaces, business rules |
 | `Vessel.Infrastructure` | Class library | EF Core, repository/query implementations, Redis, auth persistence, jobs |
 | `Vessel.API` | ASP.NET Core Web API | Controllers, middleware, DI, auth, SignalR, Swagger |
 | `Vessel.AI` | Class library | Embeddings, RAG orchestration, prompt handling |
 | `Vessel.Tests` | xUnit | Unit tests and integration tests |
 
+## Cross-Cutting Technical Decisions
+
+### Data And Entity Conventions
+
+- Use `Guid` primary keys for all aggregate roots and child records.
+- Persist timestamps as UTC and use `DateTimeOffset` in the entity model to avoid ambiguous local time handling.
+- `UpdatedAt` is non-null and is initialized to the same value as `CreatedAt` on insert.
+- Nullable fields:
+  - `RefreshToken.RevokedAt`
+  - `RefreshToken.ReplacedByTokenHash`
+  - `ProviderRate.EffectiveTo`
+  - `Booking.Notes`
+  - `PriceAlert.LastTriggeredRateId`
+- Monetary precision:
+  - `PricePerGallon`, `PricePerGallonSnapshot`, `ThresholdTotalPrice`: `decimal(18,4)`
+  - `TotalPrice`: `decimal(18,2)`
+- `VolumeInGallons` should be `int` in v1.
+- `Latitude` and `Longitude` should be `double`.
+- Required max lengths:
+  - `Email`: 320
+  - `FullName`: 200
+  - `CompanyName`: 200
+  - `ContactNumber`: 50
+  - `City`: 100
+  - `Area.Name`: 150
+  - `DeliveryAddress`: 500
+  - `Notes`: 1000
+- `Provider` has its own `Id` and a unique `UserId`. `Booking.ProviderId` points to `Provider.Id`, not `User.Id`.
+- `Booking.ConsumerId` and `PriceAlert.ConsumerId` point to `User.Id`.
+- Use `DeleteBehavior.Restrict` for historical or business records so deleting a user or provider cannot wipe bookings, alerts, or rate history. Cascade only from `User` to `RefreshTokens`.
+- Seed IDs should be deterministic and stored in a central `SeedIds` helper so tests and future chats can reference the same IDs.
+
+### Auth, Claims, And SignalR
+
+- Access tokens must include `sub`, `email`, and `role` claims.
+- Use the authenticated user id from `sub` or `ClaimTypes.NameIdentifier` as the single source of truth in controllers and SignalR.
+- Map SignalR user identity to the authenticated user id so alert notifications can be sent through `Clients.User(userId)`.
+- Public registration is consumer-only. Provider onboarding is manual or admin-driven in v1.
+
+### Testing And Operational Conventions
+
+- Integration tests must use the local `postgres-test` container and local Redis. Do not point tests at Supabase.
+- Add a `DesignTimeDbContextFactory` in `Vessel.Infrastructure` so EF migrations work consistently even before the full API host is stable.
+- Use Hangfire fire-and-forget jobs for asynchronous embedding generation in Phase 9.
+- The validation pipeline is established in Phase 1. Phase 10 is an audit and completion phase, not the first time validation is wired up.
+- Idempotency contract:
+  - same authenticated consumer + same `Idempotency-Key` + equivalent payload -> return the original booking response
+  - same authenticated consumer + same `Idempotency-Key` + different payload -> return `409 Conflict`
+  - different consumer + same key -> no collision
+
 ## Phase 1: Bootstrap And Local Setup
 
 ### Tasks
 
-1. Create the solution and projects from `backend/`.
+1. Change into the backend directory.
+
+```powershell
+Set-Location d:\Projects\vessel\backend
+```
+
+2. Verify local prerequisites and record the exact SDK version that will later be pinned in `global.json`.
+
+```powershell
+dotnet --version
+docker --version
+docker compose version
+```
+dotnet --version
+10.0.102
+docker --version
+Docker version 29.2.0, build 0b9d198
+docker compose version
+Docker Compose version v5.0.2 
+
+3. Create the solution and projects from `backend/`.
 
 ```powershell
 dotnet new sln -n Vessel
@@ -86,19 +201,18 @@ dotnet new classlib -n Vessel.AI -o Vessel.AI -f net10.0
 dotnet new webapi -n Vessel.API -o Vessel.API -f net10.0 --use-controllers
 dotnet new xunit -n Vessel.Tests -o Vessel.Tests -f net10.0
 ```
-
-2. Add all projects to the solution.
+4. Add all projects to the solution.
 
 ```powershell
-dotnet sln Vessel.sln add Vessel.Core/Vessel.Core.csproj
-dotnet sln Vessel.sln add Vessel.Application/Vessel.Application.csproj
-dotnet sln Vessel.sln add Vessel.Infrastructure/Vessel.Infrastructure.csproj
-dotnet sln Vessel.sln add Vessel.AI/Vessel.AI.csproj
-dotnet sln Vessel.sln add Vessel.API/Vessel.API.csproj
-dotnet sln Vessel.sln add Vessel.Tests/Vessel.Tests.csproj
+dotnet sln Vessel.slnx add Vessel.Core/Vessel.Core.csproj
+dotnet sln Vessel.slnx add Vessel.Application/Vessel.Application.csproj
+dotnet sln Vessel.slnx add Vessel.Infrastructure/Vessel.Infrastructure.csproj
+dotnet sln Vessel.slnx add Vessel.AI/Vessel.AI.csproj
+dotnet sln Vessel.slnx add Vessel.API/Vessel.API.csproj
+dotnet sln Vessel.slnx add Vessel.Tests/Vessel.Tests.csproj
 ```
 
-3. Add project references.
+5. Add project references.
 
 ```powershell
 dotnet add Vessel.Application/Vessel.Application.csproj reference Vessel.Core/Vessel.Core.csproj
@@ -119,7 +233,7 @@ dotnet add Vessel.Tests/Vessel.Tests.csproj reference Vessel.Infrastructure/Vess
 dotnet add Vessel.Tests/Vessel.Tests.csproj reference Vessel.API/Vessel.API.csproj
 ```
 
-4. Install the first packages.
+6. Install the first packages.
 
 ```powershell
 dotnet add Vessel.Application/Vessel.Application.csproj package FluentValidation
@@ -133,110 +247,153 @@ dotnet add Vessel.Tests/Vessel.Tests.csproj package Microsoft.AspNetCore.Mvc.Tes
 dotnet add Vessel.Tests/Vessel.Tests.csproj package FluentAssertions
 ```
 
-5. Install the EF Core CLI tool.
+7. Install the EF Core CLI tool.
 
 ```powershell
 dotnet tool update --global dotnet-ef
 ```
 
-This command installs the tool if missing and updates it if already installed.
+8. After the first successful build, pin the exact SDK with `global.json`.
 
-6. Create `backend/docker-compose.yml`.
+```powershell
+dotnet new globaljson --sdk-version <exact-dotnet-version-from-step-2>
+```
+
+9. Create `backend/docker-compose.yml`.
+
+Note: use this for local auxiliary services and isolated integration tests. Supabase remains the primary database for normal development.
 
 ```yaml
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: vessel-postgres
-    environment:
-      POSTGRES_DB: vessel
-      POSTGRES_USER: vessel
-      POSTGRES_PASSWORD: vessel
-    ports:
-      - "5432:5432"
-    volumes:
-      - vessel-postgres-data:/var/lib/postgresql/data
-
   redis:
     image: redis:7-alpine
     container_name: vessel-redis
     ports:
       - "6379:6379"
 
-volumes:
-  vessel-postgres-data:
+  postgres-test:
+    image: pgvector/pgvector:pg16
+    container_name: vessel-postgres-test
+    environment:
+      POSTGRES_DB: vessel_test
+      POSTGRES_USER: vessel
+      POSTGRES_PASSWORD: vessel
+    ports:
+      - "5433:5432"
 ```
 
-7. Start local services.
+10. Start local services.
 
 ```powershell
 docker compose up -d
 ```
 
-8. Create `Vessel.API/appsettings.Development.json`.
+11. Initialize local secrets for `Vessel.API`.
+
+```powershell
+dotnet user-secrets init --project Vessel.API
+
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_SUPABASE_POSTGRES_CONNECTION_STRING" --project Vessel.API
+dotnet user-secrets set "ConnectionStrings:Redis" "localhost:6379" --project Vessel.API
+
+dotnet user-secrets set "Jwt:Issuer" "Vessel" --project Vessel.API
+dotnet user-secrets set "Jwt:Audience" "Vessel.Client" --project Vessel.API
+dotnet user-secrets set "Jwt:Key" "replace-this-with-a-long-development-secret-key" --project Vessel.API
+dotnet user-secrets set "Jwt:AccessTokenMinutes" "60" --project Vessel.API
+dotnet user-secrets set "Jwt:RefreshTokenDays" "7" --project Vessel.API
+
+dotnet user-secrets set "Gemini:ApiKey" "YOUR_GEMINI_FREE_API_KEY" --project Vessel.API
+dotnet user-secrets set "Gemini:ChatModelId" "gemini-1.5-flash" --project Vessel.API
+dotnet user-secrets set "Gemini:EmbeddingModelId" "VERIFY_IN_PHASE_9" --project Vessel.API
+```
+
+12. Keep only non-secret defaults in `Vessel.API/appsettings.json` or `Vessel.API/appsettings.Development.json`.
+
+Recommended non-secret shape:
 
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=vessel;Username=vessel;Password=vessel",
-    "Redis": "localhost:6379"
-  },
-  "Jwt": {
-    "Issuer": "Vessel",
-    "Audience": "Vessel.Client",
-    "Key": "replace-this-with-a-long-development-secret-key"
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:5173"
+    ]
   }
 }
 ```
 
-9. Delete template files from `Vessel.API`.
+13. Delete template files from `Vessel.API`.
 
 - `WeatherForecast.cs`
 - `WeatherForecastController.cs`
 
-10. Clean `Program.cs` so only your own registrations remain.
+14. Clean `Program.cs` so only required baseline registrations remain.
 
-11. Configure Swagger in `Program.cs`.
+Required baseline:
 
-- Register `AddSwaggerGen()` with API info (title: "Vessel API", version: "v1").
-- Add a JWT security definition so the Swagger UI has an "Authorize" button.
-- Enable `UseSwagger()` and `UseSwaggerUI()` in the pipeline.
-- Enable XML comments: add `<GenerateDocumentationFile>true</GenerateDocumentationFile>` to `Vessel.API.csproj` and pass the XML path to `SwaggerGenOptions.IncludeXmlComments()`.
+- `AddControllers()`
+- `AddEndpointsApiExplorer()`
+- `AddSwaggerGen(...)`
+- `AddCors(...)`
+- `MapControllers()`
+- `UseHttpsRedirection()`
 
-12. Create `Vessel.API/Extensions/ServiceCollectionExtensions.cs`.
+15. Configure Swagger in `Program.cs`.
+
+- Register `AddSwaggerGen()` with API info:
+  - title: `Vessel API`
+  - version: `v1`
+- Add a JWT bearer security definition so the Swagger UI has an `Authorize` button.
+- Enable `UseSwagger()` and `UseSwaggerUI()` in Development.
+- Enable XML comments by adding `<GenerateDocumentationFile>true</GenerateDocumentationFile>` to `Vessel.API.csproj` and passing the XML path to `SwaggerGenOptions.IncludeXmlComments()`.
+
+16. Create `Vessel.API/Extensions/ServiceCollectionExtensions.cs`.
 
 - This file will hold all DI registrations grouped by feature area.
 - Start with a method `AddApplicationServices(this IServiceCollection services)` that registers nothing yet. Each phase will add to it.
 - Call it from `Program.cs`.
 
-13. Create a `HealthController` as a smoke-test endpoint.
+17. Add the validation pipeline baseline.
 
-- `[Route("api/[controller]")]`, `[ApiController]`
-- `[HttpGet]` returns `200 OK` with `{ "status": "healthy" }`.
-- Add `[ProducesResponseType(typeof(object), 200)]`.
-- This confirms attribute routing, Swagger, and the pipeline work.
+- Create a global validation filter or equivalent MVC pipeline hook now.
+- The goal is for future FluentValidation validators to be enforced without per-controller plumbing.
+- Keep actual validator coverage feature-by-feature in later phases.
 
-14. Build the solution.
+18. Configure CORS in `Program.cs`.
+
+- Define a policy such as `VesselFrontend`.
+- Allow `http://localhost:5173`.
+- Allow any header and any method.
+- Use `app.UseCors("VesselFrontend")` before authentication and authorization middleware.
+
+19. Create a `HealthController` as a smoke-test endpoint.
+
+- `[Route("api/[controller]")]`, `[ApiController]`, `[Tags("Health")]`
+- `[HttpGet]` returns `200 OK` with `{ "status": "healthy" }`
+- Add `[ProducesResponseType(typeof(object), 200)]`
+
+20. Build the solution.
 
 ```powershell
 dotnet build
 ```
 
-15. Run the API once to confirm the solution starts.
+21. Run the API once to confirm the solution starts.
 
 ```powershell
 dotnet run --project Vessel.API
 ```
 
-16. Open Swagger UI in a browser at `https://localhost:{port}/swagger` to verify it loads.
+22. Open Swagger at the exact local URL printed by `dotnet run`, then append `/swagger`.
 
 ### Done When
 
 - `dotnet build` succeeds
-- PostgreSQL and Redis are running
+- `global.json` exists
+- local Redis and `postgres-test` are running
 - `Vessel.API` starts without template errors
 - Swagger UI loads and shows the health endpoint
 - `ServiceCollectionExtensions.cs` exists and is called from `Program.cs`
+- secrets are stored via user-secrets instead of committed config values
 
 ## Phase 2: Domain Model And Persistence
 
@@ -289,6 +446,7 @@ dotnet run --project Vessel.API
   - `ContactNumber`
   - `IsActive`
   - `CreatedAt`
+  - `UpdatedAt`
 
 - `ProviderRate`
   - `Id`
@@ -319,22 +477,26 @@ dotnet run --project Vessel.API
   - `Id`
   - `ConsumerId`
   - `AreaId`
-  - `ThresholdPrice`
+  - `ThresholdTotalPrice`
   - `TargetVolumeInGallons`
   - `Direction`
   - `IsActive`
   - `LastTriggeredRateId`
   - `CreatedAt`
+  - `UpdatedAt`
 
-4. Do not create `RateEmbedding` yet. Add it in phase 9 with the AI migration.
+4. Do not create `RateEmbedding` yet. Add it in Phase 9 with the AI migration.
 
 5. Create `ApplicationDbContext` in `Vessel.Infrastructure/Data`.
 
-6. Create this folder in `Vessel.Application`.
+6. Create `ApplicationDbContextFactory` in `Vessel.Infrastructure/Data` for design-time migrations and test stability.
+
+7. Create these folders in `Vessel.Application`.
 
 - `Interfaces/Repositories/`
+- `Interfaces/Queries/`
 
-7. Add only the repository interfaces you need for the first backend features.
+8. Add only the repository interfaces you need for the first backend features.
 
 Start with:
 
@@ -346,11 +508,11 @@ Start with:
 - `IBookingRepository`
 - `IPriceAlertRepository`
 
-8. Implement those interfaces in `Vessel.Infrastructure`.
+9. Implement those interfaces in `Vessel.Infrastructure`.
 
-9. Create one EF Core configuration class per entity in `Vessel.Infrastructure/Data/Configurations`.
+10. Create one EF Core configuration class per entity in `Vessel.Infrastructure/Data/Configurations`.
 
-10. Add database constraints and indexes.
+11. Add database constraints and indexes.
 
 - Unique index on `Users.Email`
 - Unique index on `Areas.City + Areas.Name`
@@ -358,24 +520,40 @@ Start with:
 - Unique index on `Bookings.ConsumerId + IdempotencyKey`
 - Filtered unique index on `ProviderRates.ProviderId + AreaId` where `EffectiveTo IS NULL`
 
-11. Set decimal precision explicitly for price fields.
+12. Set explicit precision and nullability.
 
-- `PricePerGallon`
-- `PricePerGallonSnapshot`
-- `TotalPrice`
-- `ThresholdPrice`
+- `PricePerGallon`, `PricePerGallonSnapshot`, and `ThresholdTotalPrice`: `decimal(18,4)`
+- `TotalPrice`: `decimal(18,2)`
+- `Notes`, `EffectiveTo`, `RevokedAt`, `ReplacedByTokenHash`, and `LastTriggeredRateId` are nullable
 
-12. Configure all timestamps in UTC.
+13. Configure delete behaviors.
 
-13. Seed a starter list of areas for Islamabad, Lahore, and Karachi in `ApplicationDbContext.OnModelCreating` using `HasData`. Do not build admin area management in v1.
+- `User -> RefreshTokens`: cascade
+- All historical and business relationships: restrict
 
-14. Create the initial migration.
+14. Configure all timestamps in UTC and centralize `CreatedAt` / `UpdatedAt` stamping in the `DbContext` save pipeline or an interceptor.
+
+15. Seed a starter list of areas covering Islamabad, Lahore, and Karachi using deterministic GUIDs.
+
+Implementation rule:
+
+- once the final area names and coordinates are chosen, keep them stable and record the resulting GUIDs in both code and this document
+- do not build admin area management in v1
+
+16. Seed Development-only users for one admin and one provider.
+
+Important:
+
+- create both the `User` row and the matching `Provider` row for the seeded provider account
+- keep seed passwords out of source control by reading them from configuration or user-secrets
+
+17. Create the initial migration.
 
 ```powershell
 dotnet ef migrations add InitialCreate --project Vessel.Infrastructure --startup-project Vessel.API --output-dir Data/Migrations
 ```
 
-15. Apply the migration.
+18. Apply the migration.
 
 ```powershell
 dotnet ef database update --project Vessel.Infrastructure --startup-project Vessel.API
@@ -390,8 +568,10 @@ Note:
 
 - The schema exists in PostgreSQL
 - All entities map correctly
-- The area seed data is inserted
+- Seeded areas and Development-only seed users are inserted
 - The unique constraints are enforced by the database
+- The filtered active-rate constraint works
+- Migrations can run through the design-time factory without depending on fragile startup behavior
 
 ## Phase 3: Authentication And Authorization
 
@@ -412,9 +592,21 @@ dotnet add Vessel.API/Vessel.API.csproj package Microsoft.AspNetCore.Authenticat
 3. Create auth DTOs.
 
 - `RegisterRequestDto`
+  - `Email`
+  - `Password`
+  - `FullName`
 - `LoginRequestDto`
+  - `Email`
+  - `Password`
 - `RefreshTokenRequestDto`
+  - `RefreshToken`
 - `AuthResponseDto`
+  - `AccessToken`
+  - `AccessTokenExpiresAtUtc`
+  - `RefreshToken`
+  - `RefreshTokenExpiresAtUtc`
+  - `UserId`
+  - `Role`
 
 4. Create service interfaces.
 
@@ -432,48 +624,62 @@ dotnet add Vessel.API/Vessel.API.csproj package Microsoft.AspNetCore.Authenticat
 - create refresh tokens
 - store only refresh token hashes in the database
 - revoke old refresh tokens on refresh
+- use config-driven token lifetimes:
+  - access token: 60 minutes
+  - refresh token: 7 days
 
-6. Configure JWT authentication in `Program.cs`.
+6. Configure custom JWT authentication in `Program.cs`.
 
-- Read `Jwt:Issuer`, `Jwt:Audience`, and `Jwt:Key` from configuration.
+Note: Supabase hosts PostgreSQL, but identity and JWT issuance are owned by the .NET backend.
+
+- Read `Jwt:Issuer`, `Jwt:Audience`, `Jwt:Key`, `Jwt:AccessTokenMinutes`, and `Jwt:RefreshTokenDays` from configuration.
 - Register `AddAuthentication(JwtBearerDefaults.AuthenticationScheme)` with `AddJwtBearer()`.
-- Validate `Issuer`, `Audience`, `IssuerSigningKey`, and `Lifetime`.
+- Validate issuer, audience, signing key, and lifetime.
 - Set `RequireHttpsMetadata = false` for local development only.
 - Place `UseAuthentication()` before `UseAuthorization()` in the pipeline.
 
 7. Add authorization policies.
 
-- `ConsumerOnly` — requires `Role` claim == `Consumer`
-- `ProviderOnly` — requires `Role` claim == `Provider`
-- `AdminOnly` — requires `Role` claim == `Admin`
+- `ConsumerOnly`: requires role `Consumer`
+- `ProviderOnly`: requires role `Provider`
+- `AdminOnly`: requires role `Admin`
 - Register them with `AddAuthorizationBuilder().AddPolicy(...)` in `Program.cs`.
 
 8. Update Swagger configuration to support JWT.
 
 - The security definition from Phase 1 should already be in place.
-- Test the full flow: register → login → copy the token → click "Authorize" in Swagger UI → paste `Bearer {token}` → hit a protected endpoint.
+- Verify the flow in this order: register -> login -> copy the token -> click `Authorize` -> paste `Bearer {token}` -> call a protected endpoint.
 
 9. Create `AuthController` with attribute routing and response annotations.
 
 - `[Route("api/[controller]")]`, `[ApiController]`, `[Tags("Authentication")]`
-- `[HttpPost("register")]` — `[ProducesResponseType(typeof(AuthResponseDto), 201)]`, `[ProducesResponseType(400)]`, `[ProducesResponseType(409)]`
-- `[HttpPost("login")]` — `[ProducesResponseType(typeof(AuthResponseDto), 200)]`, `[ProducesResponseType(401)]`
-- `[HttpPost("refresh")]` — `[ProducesResponseType(typeof(AuthResponseDto), 200)]`, `[ProducesResponseType(401)]`
+- `[HttpPost("register")]`
+  - `[ProducesResponseType(typeof(AuthResponseDto), 201)]`
+  - `[ProducesResponseType(400)]`
+  - `[ProducesResponseType(409)]`
+- `[HttpPost("login")]`
+  - `[ProducesResponseType(typeof(AuthResponseDto), 200)]`
+  - `[ProducesResponseType(401)]`
+- `[HttpPost("refresh")]`
+  - `[ProducesResponseType(typeof(AuthResponseDto), 200)]`
+  - `[ProducesResponseType(401)]`
 - Add XML `<summary>` comments to each action.
 
 10. Register auth services in `ServiceCollectionExtensions`.
 
-- `IAuthService` → `AuthService`
-- `IJwtTokenService` → `JwtTokenService`
-- `IPasswordHasherService` → `PasswordHasherService`
+- `IAuthService` -> `AuthService`
+- `IJwtTokenService` -> `JwtTokenService`
+- `IPasswordHasherService` -> `PasswordHasherService`
 
 11. Make public registration create `Consumer` users only.
 
-12. Seed one admin account and one provider account for testing.
+12. Keep provider and admin account creation out of the public API in v1.
 
-13. Add validators for the auth request DTOs.
+13. Seed one admin account and one provider account for testing in Development only.
 
-14. Add tests for:
+14. Add validators for the auth request DTOs.
+
+15. Add tests for:
 
 - successful registration
 - successful login
@@ -487,6 +693,7 @@ dotnet add Vessel.API/Vessel.API.csproj package Microsoft.AspNetCore.Authenticat
 - Access and refresh tokens are issued correctly
 - Refresh token rotation works
 - Role-based authorization is enforced
+- Provider and admin accounts are not publicly self-registrable
 - JWT "Authorize" button works in Swagger UI
 - All auth endpoints show documented request/response schemas in Swagger
 
@@ -508,9 +715,26 @@ Before building the real `IRateService`, create `MockRateService` in `Vessel.Inf
 2. Create DTOs.
 
 - `AreaDto`
+  - `Id`
+  - `City`
+  - `Name`
+  - `Latitude`
+  - `Longitude`
 - `RateDto`
+  - `ProviderId`
+  - `CompanyName`
+  - `AreaId`
+  - `AreaName`
+  - `City`
+  - `PricePerGallon`
+  - `EffectiveFrom`
 - `CreateRateDto`
+  - `AreaId`
+  - `PricePerGallon`
 - `RateHistoryDto`
+  - `PricePerGallon`
+  - `EffectiveFrom`
+  - `EffectiveTo`
 
 3. Create service interfaces.
 
@@ -519,27 +743,27 @@ Before building the real `IRateService`, create `MockRateService` in `Vessel.Inf
 
 4. Create mock implementations and register them in DI.
 
-- `MockAreaService` — returns the seeded area list from memory.
-- `MockRateService` — returns a few fake rates.
+- `MockAreaService` -> returns the seeded area list from memory.
+- `MockRateService` -> returns a few fake rates.
 
 5. Create controllers with full attribute routing.
 
-- `AreasController` — `[Route("api/[controller]")]`, `[ApiController]`, `[Tags("Areas")]`
-- `RatesController` — `[Route("api/[controller]")]`, `[ApiController]`, `[Tags("Rates")]`
+- `AreasController` -> `[Route("api/[controller]")]`, `[ApiController]`, `[Tags("Areas")]`
+- `RatesController` -> `[Route("api/[controller]")]`, `[ApiController]`, `[Tags("Rates")]`
 
 6. Implement these endpoints with route constraints.
 
-- `[HttpGet]` on `AreasController` → `GET /api/areas`
-- `[HttpGet("{areaId:guid}")]` on `RatesController` → `GET /api/rates/{areaId}`
-- `[HttpGet("history/{areaId:guid}/{providerId:guid}")]` on `RatesController` → `GET /api/rates/history/{areaId}/{providerId}`
-- `[HttpPost]` on `RatesController` → `POST /api/rates`
+- `[HttpGet]` on `AreasController` -> `GET /api/areas`
+- `[HttpGet("{areaId:guid}")]` on `RatesController` -> `GET /api/rates/{areaId}`
+- `[HttpGet("history/{areaId:guid}/{providerId:guid}")]` on `RatesController` -> `GET /api/rates/history/{areaId}/{providerId}`
+- `[HttpPost]` on `RatesController` -> `POST /api/rates`
 
 7. Add response annotations to every action.
 
 - `AreasController.GetAll`: `[ProducesResponseType(typeof(List<AreaDto>), 200)]`
-- `RatesController.GetByArea`: `[ProducesResponseType(typeof(List<RateDto>), 200)]`, `[ProducesResponseType(404)]`
-- `RatesController.GetHistory`: `[ProducesResponseType(typeof(List<RateHistoryDto>), 200)]`, `[ProducesResponseType(404)]`
-- `RatesController.Create`: `[ProducesResponseType(typeof(RateDto), 201)]`, `[ProducesResponseType(400)]`, `[ProducesResponseType(401)]`, `[ProducesResponseType(403)]`
+- `RatesController.GetByArea`: `[ProducesResponseType(typeof(List<RateDto>), 200)]`, `[ProducesResponseType(404)]` only when `areaId` does not exist
+- `RatesController.GetHistory`: `[ProducesResponseType(typeof(List<RateHistoryDto>), 200)]`, `[ProducesResponseType(404)]` only when `areaId` or `providerId` does not exist
+- `RatesController.Create`: `[ProducesResponseType(typeof(RateDto), 201)]`, `[ProducesResponseType(400)]`, `[ProducesResponseType(401)]`, `[ProducesResponseType(403)]`, `[ProducesResponseType(409)]`
 
 8. Verify endpoints render correctly in Swagger UI while still backed by mocks.
 
@@ -547,7 +771,9 @@ Before building the real `IRateService`, create `MockRateService` in `Vessel.Inf
 
 10. Lock `POST /api/rates` to provider users only using `[Authorize(Policy = "ProviderOnly")]`.
 
-11. In the rate update flow:
+11. In rate creation and update flows, derive the provider from the authenticated user. Do not accept `ProviderId` from the request body.
+
+12. In the rate update flow:
 
 - find the current active rate for that provider and area
 - set its `EffectiveTo` to the current UTC time
@@ -555,15 +781,18 @@ Before building the real `IRateService`, create `MockRateService` in `Vessel.Inf
 - set `EffectiveFrom` to the current UTC time
 - save both changes in one transaction
 
-12. Add `RateAlertHub` in `Vessel.API/Hubs`.
+13. Add `RateAlertHub` in `Vessel.API/Hubs` and map it at `/hubs/rates`.
 
-13. After a rate update succeeds, broadcast a `RateChanged` SignalR event.
+14. After a rate update succeeds, broadcast a `RateChanged` SignalR event with enough data for the frontend to refresh.
 
-14. Add tests for:
+Note: v1 Hub strategy is a global broadcast. Future optimization will use `Groups` based on `AreaId`.
+
+15. Add tests for:
 
 - posting a new rate expires the old active rate
 - history returns older rates and latest rates correctly
 - public rate queries return only active rates
+- provider identity is taken from the JWT, not the request body
 
 ### Done When
 
@@ -571,7 +800,7 @@ Before building the real `IRateService`, create `MockRateService` in `Vessel.Inf
 - Rate history is preserved
 - Only one active rate exists per provider-area pair
 - SignalR broadcasts on successful rate changes
-- Mock services are removed or moved to the test project
+- Mock services are removed from production DI
 - Swagger shows all rate endpoints with full schemas
 
 ## Phase 5: Provider Discovery
@@ -584,7 +813,18 @@ Create `MockProviderDiscoveryService` that returns a handful of static providers
 
 1. Create DTOs for provider search.
 
+- `SearchProvidersQueryDto`
+  - `Lat`
+  - `Lon`
+  - `RadiusKm`
 - `ProviderSearchResultDto`
+  - `ProviderId`
+  - `CompanyName`
+  - `AreaId`
+  - `AreaName`
+  - `City`
+  - `DistanceKm`
+  - `CurrentPricePerGallon`
 
 2. Create service interface.
 
@@ -598,12 +838,14 @@ Create `MockProviderDiscoveryService` that returns a handful of static providers
 
 5. Implement this endpoint with query-parameter binding.
 
-- `[HttpGet("search")]` → `GET /api/providers/search?lat={lat}&lon={lon}&radiusKm={radiusKm}`
-- Bind parameters as `[FromQuery] double lat`, `[FromQuery] double lon`, `[FromQuery] double radiusKm = 10`.
-- Add `[ProducesResponseType(typeof(List<ProviderSearchResultDto>), 200)]`.
-- Add `[ProducesResponseType(400)]` for invalid coordinates.
+Use a query DTO instead of individual scalar parameters:
 
-6. Add a FluentValidation validator for query parameters.
+- `GET /api/providers/search?lat={lat}&lon={lon}&radiusKm={radiusKm}`
+- bind as `[FromQuery] SearchProvidersQueryDto query`
+- keep `[ProducesResponseType(typeof(List<ProviderSearchResultDto>), 200)]`
+- keep `[ProducesResponseType(400)]` for invalid coordinates
+
+6. Add a FluentValidation validator for the query DTO.
 
 - `lat` must be between -90 and 90.
 - `lon` must be between -180 and 180.
@@ -617,7 +859,7 @@ Create `MockProviderDiscoveryService` that returns a handful of static providers
 
 10. Use the area coordinates as the distance source.
 
-11. Query nearby areas, join to active provider rates, and return providers that serve those areas.
+11. Query nearby areas, join to active provider rates, and return provider-area pairs that serve those areas.
 
 12. Sort results by:
 
@@ -634,7 +876,9 @@ Create `MockProviderDiscoveryService` that returns a handful of static providers
 - distance in kilometers
 - current price per gallon
 
-14. Add tests for:
+14. Keep the response shape as one row per active provider-area pair. Do not collapse multiple areas belonging to the same provider in v1.
+
+15. Add tests for:
 
 - providers outside the radius are excluded
 - sorting is distance first and price second
@@ -642,7 +886,7 @@ Create `MockProviderDiscoveryService` that returns a handful of static providers
 
 ### Done When
 
-- Geo search returns the correct providers
+- Geo search returns the correct provider-area results
 - Sorting matches the PRD
 - Query parameters are validated
 - Swagger shows the search endpoint with all query parameters documented
@@ -664,8 +908,28 @@ dotnet add Vessel.Infrastructure/Vessel.Infrastructure.csproj package StackExcha
 2. Create booking DTOs.
 
 - `CreateBookingDto`
+  - `ProviderId`
+  - `AreaId`
+  - `VolumeInGallons`
+  - `ScheduledFor`
+  - `DeliveryAddress`
+  - `Notes`
 - `BookingResponseDto`
+  - `Id`
+  - `ConsumerId`
+  - `ProviderId`
+  - `AreaId`
+  - `VolumeInGallons`
+  - `PricePerGallonSnapshot`
+  - `TotalPrice`
+  - `DeliveryAddress`
+  - `Notes`
+  - `Status`
+  - `ScheduledFor`
+  - `CreatedAt`
+  - `UpdatedAt`
 - `UpdateBookingStatusDto`
+  - `Status`
 
 3. Create `IBookingService` interface.
 
@@ -677,10 +941,10 @@ dotnet add Vessel.Infrastructure/Vessel.Infrastructure.csproj package StackExcha
 
 6. Implement these endpoints with route constraints.
 
-- `[HttpPost]` → `POST /api/bookings` — `[Authorize(Policy = "ConsumerOnly")]`
-- `[HttpGet("my-bookings")]` → `GET /api/bookings/my-bookings` — `[Authorize(Policy = "ConsumerOnly")]`
-- `[HttpGet("requests")]` → `GET /api/bookings/requests` — `[Authorize(Policy = "ProviderOnly")]`
-- `[HttpPatch("{id:guid}/status")]` → `PATCH /api/bookings/{id}/status` — `[Authorize(Policy = "ProviderOnly")]`
+- `[HttpPost]` -> `POST /api/bookings` -> `[Authorize(Policy = "ConsumerOnly")]`
+- `[HttpGet("my-bookings")]` -> `GET /api/bookings/my-bookings` -> `[Authorize(Policy = "ConsumerOnly")]`
+- `[HttpGet("requests")]` -> `GET /api/bookings/requests` -> `[Authorize(Policy = "ProviderOnly")]`
+- `[HttpPatch("{id:guid}/status")]` -> `PATCH /api/bookings/{id}/status` -> `[Authorize(Policy = "ProviderOnly")]`
 
 7. Add `[ProducesResponseType]` annotations on every action.
 
@@ -693,33 +957,47 @@ dotnet add Vessel.Infrastructure/Vessel.Infrastructure.csproj package StackExcha
 
 10. Implement real `BookingService`. Swap the mock registration.
 
-11. Implement booking creation in this order.
+11. Validate booking creation with these rules:
+
+- `ProviderId` and `AreaId` must exist
+- the provider must have an active rate for that area
+- `VolumeInGallons` must be positive
+- `ScheduledFor` must not be in the past
+- `DeliveryAddress` is required
+
+12. Implement booking creation in this order.
 
 - read the authenticated consumer id
 - read the `Idempotency-Key`
 - check Redis for a cached response
 - check the database for an existing booking with the same `ConsumerId` and `IdempotencyKey`
-- load the active provider rate for the requested area
+- if the key already exists for that consumer with a different payload, return `409 Conflict`
+- load the active provider rate for the requested provider and area
 - calculate `PricePerGallonSnapshot`
 - calculate `TotalPrice`
 - create the booking
 - save it
 - cache the response in Redis
 
-12. Use the database unique index as the source of truth for idempotency.
+13. Use the database unique index as the source of truth for idempotency.
 
-13. Keep allowed booking status transitions simple for v1.
+14. Cache idempotent booking responses in Redis for 24 hours.
+
+15. Keep allowed booking status transitions simple for v1.
 
 - `Pending -> Confirmed`
 - `Pending -> Cancelled`
 - `Confirmed -> Cancelled`
 
-14. Allow providers to update only bookings assigned to them.
+16. Allow providers to update only bookings assigned to them.
 
-15. Add tests for:
+17. Return booking lists newest first.
+
+18. Add tests for:
 
 - duplicate requests with the same consumer and same key return the original booking
 - the same key from a different consumer does not collide
+- the same key with a different payload returns `409`
 - booking totals do not change after later rate updates
 - one provider cannot update another provider's booking
 
@@ -744,32 +1022,54 @@ dotnet add Vessel.API/Vessel.API.csproj package Hangfire.PostgreSql
 2. Create alert DTOs.
 
 - `CreatePriceAlertDto`
+  - `AreaId`
+  - `ThresholdTotalPrice`
+  - `TargetVolumeInGallons`
+  - `Direction`
 - `PriceAlertDto`
+  - `Id`
+  - `AreaId`
+  - `ThresholdTotalPrice`
+  - `TargetVolumeInGallons`
+  - `Direction`
+  - `IsActive`
+  - `LastTriggeredRateId`
+  - `CreatedAt`
+  - `UpdatedAt`
 - `UpdatePriceAlertDto`
+  - `ThresholdTotalPrice`
+  - `TargetVolumeInGallons`
+  - `Direction`
+  - `IsActive`
 
-3. Create `IPriceAlertService` interface and implement it directly (no mock needed — by this phase the DI pattern is well-established).
+3. Create `IPriceAlertService` and implement it directly. No mock is needed by this phase.
 
 4. Create `AlertsController` with full attribute routing.
+
+Clarification:
+
+- implement `IPriceAlertService` directly in this phase
+- do not add a mock service for alerts
 
 - `[Route("api/[controller]")]`, `[ApiController]`, `[Tags("Price Alerts")]`
 - All endpoints require `[Authorize(Policy = "ConsumerOnly")]`.
 
 5. Implement these endpoints with route constraints.
 
-- `[HttpPost]` → `POST /api/alerts`
-- `[HttpGet("my-alerts")]` → `GET /api/alerts/my-alerts`
-- `[HttpPatch("{id:guid}")]` → `PATCH /api/alerts/{id}`
-- `[HttpDelete("{id:guid}")]` → `DELETE /api/alerts/{id}`
+- `[HttpPost]` -> `POST /api/alerts`
+- `[HttpGet("my-alerts")]` -> `GET /api/alerts/my-alerts`
+- `[HttpPatch("{id:guid}")]` -> `PATCH /api/alerts/{id}`
+- `[HttpDelete("{id:guid}")]` -> `DELETE /api/alerts/{id}`
 
 6. Add `[ProducesResponseType]` annotations and XML comments.
 
 7. Register `IPriceAlertService` in `ServiceCollectionExtensions`.
 
-8. Register Hangfire in `Program.cs`.
+8. Register Hangfire in `Program.cs` using the same PostgreSQL database with a dedicated `hangfire` schema.
 
 9. Create `AlertTriggerJob` in `Vessel.Infrastructure/BackgroundJobs`.
 
-10. Schedule the job to run daily.
+10. Schedule the job to run daily in UTC.
 
 11. In the job:
 
@@ -778,7 +1078,7 @@ dotnet add Vessel.API/Vessel.API.csproj package Hangfire.PostgreSql
 - calculate the total for the alert volume
 - compare the total against the alert direction and threshold
 - skip alerts already triggered by the same rate row
-- send SignalR notifications
+- send a targeted SignalR `AlertTriggered` notification to the owning user
 - update `LastTriggeredRateId`
 
 12. Do not implement email notifications in v1. Use SignalR as the only notification channel.
@@ -797,6 +1097,7 @@ dotnet add Vessel.API/Vessel.API.csproj package Hangfire.PostgreSql
 - Alerts trigger from the recurring job
 - Duplicate notifications are suppressed for unchanged rates
 - All alert endpoints are documented in Swagger
+- Hangfire dashboard is admin-protected
 
 ## Phase 8: Admin Analytics
 
@@ -805,9 +1106,21 @@ dotnet add Vessel.API/Vessel.API.csproj package Hangfire.PostgreSql
 1. Create analytics DTOs.
 
 - `TopProviderDto`
+  - `ProviderId`
+  - `CompanyName`
+  - `ConfirmedBookingCount`
+  - `TotalGallons`
 - `AveragePriceDto`
+  - `City`
+  - `AveragePricePerGallon`
+  - `ActiveProviderCount`
 - `VolumeTrendDto`
+  - `Date`
+  - `ConfirmedBookingCount`
+  - `TotalGallons`
 - `PriceTrendDto`
+  - `Date`
+  - `AveragePricePerGallon`
 
 2. Create `IAdminAnalyticsService` interface and implement it directly.
 
@@ -818,21 +1131,21 @@ dotnet add Vessel.API/Vessel.API.csproj package Hangfire.PostgreSql
 
 4. Implement these endpoints with query-parameter binding.
 
-- `[HttpGet("top-providers")]` → `GET /api/analytics/top-providers`
-- `[HttpGet("average-prices")]` → `GET /api/analytics/average-prices?city={city}` — bind `[FromQuery] string city`.
-- `[HttpGet("volume-trends")]` → `GET /api/analytics/volume-trends?days={days}` — bind `[FromQuery] int days = 30`.
-- `[HttpGet("price-trends")]` → `GET /api/analytics/price-trends?areaId={areaId}&days={days}` — bind `[FromQuery] Guid areaId`, `[FromQuery] int days = 30`.
+- `[HttpGet("top-providers")]` -> `GET /api/analytics/top-providers`
+- `[HttpGet("average-prices")]` -> `GET /api/analytics/average-prices?city={city}` -> bind `[FromQuery] string city`.
+- `[HttpGet("volume-trends")]` -> `GET /api/analytics/volume-trends?days={days}` -> bind `[FromQuery] int days = 30`.
+- `[HttpGet("price-trends")]` -> `GET /api/analytics/price-trends?areaId={areaId}&days={days}` -> bind `[FromQuery] Guid areaId`, `[FromQuery] int days = 30`.
 
 5. Add `[ProducesResponseType]` annotations and XML comments to every action.
 
 6. Register `IAdminAnalyticsService` in `ServiceCollectionExtensions`.
 
-7. Use these data sources.
+7. Use these data sources for analytics queries.
 
-- top providers: booking counts
-- average prices: current active provider rates
-- volume trends: bookings grouped by day
-- price trends: provider rate history grouped by time window
+- **Top providers:** confirmed bookings, all-time in v1
+- **Average prices:** active provider rates where `EffectiveTo IS NULL`
+- **Volume trends:** confirmed bookings grouped by `CreatedAt` date
+- **Price trends:** area-specific provider rate history windowed by `EffectiveFrom`
 
 8. Protect all analytics endpoints with the `AdminOnly` policy.
 
@@ -851,17 +1164,24 @@ dotnet add Vessel.API/Vessel.API.csproj package Hangfire.PostgreSql
 
 ### Tasks
 
-1. Install AI packages after phases 1–8 are complete and the core backend is stable.
+1. Install AI packages only after Phases 1-8 are complete and the core backend is stable.
 
 ```powershell
 dotnet add Vessel.Infrastructure/Vessel.Infrastructure.csproj package pgvector.EntityFrameworkCore
 dotnet add Vessel.AI/Vessel.AI.csproj package Microsoft.SemanticKernel
-dotnet add Vessel.AI/Vessel.AI.csproj package Microsoft.SemanticKernel.Connectors.OpenAI
+dotnet add Vessel.AI/Vessel.AI.csproj package Microsoft.SemanticKernel.Connectors.Google
 ```
 
-2. Use OpenAI as the model provider. Store the API key in `appsettings.Development.json` under `OpenAI:ApiKey`.
+Only start this phase after Phases 1-8 are stable.
 
-3. Create `RateEmbedding` in `Vessel.Core/Entities`.
+2. Before finalizing package versions, model IDs, and vector dimensions, verify the current official Google and Semantic Kernel documentation. These details are time-sensitive.
+
+3. Use separate configuration keys for chat and embeddings.
+
+- `Gemini:ChatModelId`
+- `Gemini:EmbeddingModelId`
+
+4. Create `RateEmbedding` in `Vessel.Core/Entities`.
 
 - `Id`
 - `SourceType`
@@ -870,49 +1190,53 @@ dotnet add Vessel.AI/Vessel.AI.csproj package Microsoft.SemanticKernel.Connector
 - `Embedding`
 - `CreatedAt`
 
-4. Create an enum for `SourceType`.
+5. Create an enum for `SourceType`.
 
 - `ProviderRate`
 - `PriceAlert`
 
-5. Create the EF Core configuration for `RateEmbedding`.
+6. Create the EF Core configuration for `RateEmbedding`.
 
-6. Add a new migration for the AI schema.
+7. Add a new migration for the AI schema.
 
-7. In that migration:
+8. In that migration:
 
 - enable the PostgreSQL `vector` extension
 - create the `RateEmbeddings` table
+- use the embedding dimension documented for the chosen embedding model instead of guessing
 
-8. Create services in `Vessel.AI`.
+9. Create services in `Vessel.AI`.
 
 - `IEmbeddingGeneratorService`
 - `IRagQueryService`
 
-9. Generate embeddings for:
+10. Generate embeddings for:
 
 - provider rate changes
 - alert events
 
-10. Do not ingest external news in v1. Generate embeddings only from Vessel's own rate and alert data.
+11. Do not ingest external news in v1. Generate embeddings only from Vessel's own rate and alert data.
 
-11. Generate embeddings asynchronously so normal rate updates are not blocked by AI calls.
+12. Generate embeddings asynchronously through Hangfire so normal rate updates are not blocked by AI calls.
 
-12. Create `AiInsightsController`.
+13. Create `AiInsightsController`.
 
-13. Implement this endpoint.
+- `[Route("api/ai")]`, `[ApiController]`, `[Tags("AI")]`
+- protect the endpoint with `[Authorize]` to control cost and abuse
+
+14. Implement this endpoint.
 
 - `POST /api/ai/ask`
 
-14. In the RAG flow:
+15. In the RAG flow:
 
 - embed the user question
 - retrieve the top matching rows from `RateEmbeddings`
 - build a prompt from the retrieved context
-- ask the model for a final answer
+- ask the chat model for a final answer
 - return the answer along with the supporting `RateEmbedding` ids used in generation
 
-15. Add tests for:
+16. Add tests for:
 
 - embedding records are created
 - similar questions retrieve relevant context
@@ -921,18 +1245,25 @@ dotnet add Vessel.AI/Vessel.AI.csproj package Microsoft.SemanticKernel.Connector
 ### Done When
 
 - Embeddings are stored in PostgreSQL
-- Natural-language questions can retrieve and summarize market data
+- Natural-language questions can retrieve and summarize internal market data
 - Core write flows do not depend on live AI latency
 
 ## Phase 10: Hardening And Delivery
 
 ### Tasks
 
-1. Add request validation for all input DTOs using a FluentValidation action filter registered globally in `Program.cs`.
+1. Complete validator coverage for all input DTOs and confirm the global validation pipeline added in Phase 1 is enforcing them.
 
 2. Add global exception handling middleware.
 
-3. Return consistent `ProblemDetails` responses for all error codes (400, 401, 403, 404, 409, 500).
+3. Return consistent `ProblemDetails` responses for all error codes:
+
+- `400`
+- `401`
+- `403`
+- `404`
+- `409`
+- `500`
 
 4. Add ASP.NET Core rate limiting.
 
@@ -940,12 +1271,12 @@ Required v1 policy:
 
 - `30 requests per minute per IP`
 
-5. Add health checks for:
+5. Keep `HealthController` for smoke checks and add infrastructure readiness checks at `/healthz` for:
 
 - PostgreSQL
 - Redis
 
-6. Add structured logging.
+6. Add structured logging using the built-in ASP.NET Core logger with JSON console output unless a stronger sink requirement appears later.
 
 7. Final Swagger / OpenAPI audit.
 
@@ -966,7 +1297,7 @@ Required v1 policy:
 
 9. Final routing audit.
 
-- Confirm every controller uses `[Route("api/[controller]")]` and `[ApiController]`.
+- Confirm every controller uses `[ApiController]`.
 - Confirm every route parameter has a type constraint (`:guid`, `:int`, etc.).
 - Confirm no conventional routing is registered in `Program.cs`.
 
@@ -998,11 +1329,23 @@ Required v1 policy:
 - No mock services remain in production DI registrations
 - All routes use attribute routing with constraints
 
+## Resume Checklist For Another Chat
+
+Whenever work pauses, update this file with:
+
+- current phase status in the progress tracker
+- the exact last successful commands
+- the files or projects created since the previous checkpoint
+- any fixed seed GUIDs that future work now depends on
+- any verified external package or model decisions that were time-sensitive
+- open blockers or environment issues
+
 ## Suggested Folder Layout
 
 ```text
 backend/
   Vessel.sln
+  global.json
   docker-compose.yml
   implementation_plan.md
   Vessel.Core/
@@ -1012,6 +1355,8 @@ backend/
   Vessel.Application/
     DTOs/
     Interfaces/
+      Repositories/
+      Queries/
     Services/
     Validators/
   Vessel.Infrastructure/
@@ -1022,7 +1367,7 @@ backend/
     BackgroundJobs/
     Caching/
     Auth/
-    Mocks/              ← mock/stub service implementations (temporary)
+    Mocks/
   Vessel.AI/
     Services/
     Configuration/
@@ -1034,8 +1379,9 @@ backend/
     Program.cs
     appsettings.json
     appsettings.Development.json
-    Vessel.API.csproj    ← has <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    Vessel.API.csproj
   Vessel.Tests/
     Unit/
     Integration/
+    Mocks/
 ```

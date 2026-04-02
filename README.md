@@ -18,9 +18,9 @@
 |---|---|
 | **Backend** | ASP.NET Core 10 (Clean Architecture / Controllers) |
 | **Frontend** | React (Vite) + TypeScript + Tailwind CSS |
-| **Database** | PostgreSQL + EF Core 10 |
-| **AI / RAG** | Semantic Kernel + OpenAI + pgvector |
-| **Caching** | Redis (for session management & idempotency) |
+| **Database** | Supabase (PostgreSQL + EF Core 10) |
+| **AI / RAG** | Semantic Kernel + Google Gemini (Free API) |
+| **Caching** | Redis (Local or Supabase) |
 | **Jobs** | Hangfire (recurring market analytics & alerts) |
 | **Real-time** | SignalR (price broadcasts) |
 
