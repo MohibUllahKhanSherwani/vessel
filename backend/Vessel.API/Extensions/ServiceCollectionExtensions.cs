@@ -1,4 +1,7 @@
+using Vessel.Infrastructure.Extensions;
+
 namespace Vessel.API.Extensions;
+
 /// <summary>
 /// Extensions for <see cref="IServiceCollection"/> to register application services.
 /// </summary>
@@ -8,10 +11,11 @@ public static class ServiceCollectionExtensions
     /// Registers all application-specific services with the dependency injection container.
     /// </summary>
     /// <param name="services">The service collection instance.</param>
+    /// <param name="configuration">The application configuration.</param>
     /// <returns>The modified service collection instance.</returns>
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
-        //Fill later
+        services.AddInfrastructureServices(configuration);
         return services;
     }
 }
