@@ -43,11 +43,16 @@ builder.Services.AddSwaggerGen(options =>
     securityRequirement.Add(new OpenApiSecuritySchemeReference("Bearer"), new List<string>());
     options.AddSecurityRequirement(_ => securityRequirement);
 });
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    using (var scope = app.Services.CreateScope())
+    {
+        var seeder = scope.ServiceProvider.GetRequiredService<Vessel.Infrastructure.Data.DbInitializer>();
+        await seeder.InitializeAsync();
+    }
     app.UseSwagger();
     app.UseSwaggerUI();
 }
