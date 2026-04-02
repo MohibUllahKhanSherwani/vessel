@@ -35,6 +35,5 @@ dist/
 dist-ssr/
 *.local
 
-# Docker
-.docker/
-docker-compose.override.yml
+# Documentation and Plans
+backend/implementation_plan.md
