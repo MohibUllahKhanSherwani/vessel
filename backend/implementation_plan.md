@@ -182,12 +182,6 @@ dotnet --version
 docker --version
 docker compose version
 ```
-dotnet --version
-10.0.102
-docker --version
-Docker version 29.2.0, build 0b9d198
-docker compose version
-Docker Compose version v5.0.2 
 
 3. Create the solution and projects from `backend/`.
 
@@ -303,16 +297,32 @@ dotnet user-secrets set "Jwt:AccessTokenMinutes" "60" --project Vessel.API
 dotnet user-secrets set "Jwt:RefreshTokenDays" "7" --project Vessel.API
 
 dotnet user-secrets set "Gemini:ApiKey" "YOUR_GEMINI_FREE_API_KEY" --project Vessel.API
-dotnet user-secrets set "Gemini:ChatModelId" "gemini-1.5-flash" --project Vessel.API
+dotnet user-secrets set "Gemini:ChatModelId" "gemini-2.5-flash" --project Vessel.API
 dotnet user-secrets set "Gemini:EmbeddingModelId" "VERIFY_IN_PHASE_9" --project Vessel.API
 ```
 
-12. Keep only non-secret defaults in `Vessel.API/appsettings.json` or `Vessel.API/appsettings.Development.json`.
+12. Keep only non-secret defaults and placeholders for documentation in `Vessel.API/appsettings.json`.
 
-Recommended non-secret shape:
+Recommended non-secret shape with secret placeholders:
 
 ```json
 {
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=your-host;Database=postgres;Username=postgres;Password=YOUR_SECURE_PASSWORD;",
+    "Redis": "localhost:6379"
+  },
+  "Jwt": {
+    "Issuer": "Vessel",
+    "Audience": "Vessel.Client",
+    "Key": "PLACEHOLDER_FOR_32_CHAR_SECRET_KEY",
+    "AccessTokenMinutes": 60,
+    "RefreshTokenDays": 7
+  },
+  "Gemini": {
+    "ApiKey": "YOUR_GEMINI_API_KEY",
+    "ChatModelId": "gemini-2.5-flash",
+    "EmbeddingModelId": "VERIFY_IN_PHASE_9"
+  },
   "Cors": {
     "AllowedOrigins": [
       "http://localhost:5173"
