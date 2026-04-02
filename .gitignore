@@ -1,0 +1,40 @@
+# .NET GitIgnore
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Cc]heckpoint*/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Secrets and Configs
+# We use dotnet user-secrets for real keys, but we'll ignore potential local overrides
+[Aa]ppsettings.[Dd]evelopment.json
+.env
+.env.*
+!.env.example
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Frontend (for Phase 2)
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Docker
+.docker/
+docker-compose.override.yml

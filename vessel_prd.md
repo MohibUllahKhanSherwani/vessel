@@ -1,178 +1,257 @@
-# Product Requirements Document — Vessel
+# Product Requirements Document - Vessel MVP
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** In Development  
-**Author:** Mohib Ullah Khan Sherwani
-**Last Updated:** March 2026
+**Author:** Mohib Ullah Khan Sherwani  
+**Last Updated:** April 2026
 
 ---
 
-## 1. Problem Statement
+## 1. Product Summary
 
-Pakistan faces a chronic municipal water shortage. In major cities like Karachi, Lahore, and Islamabad, a significant portion of residential and commercial water needs are fulfilled by privately-operated water tankers. This is not a niche use case — Karachi alone sees an estimated 8,000–10,000 tanker deliveries per day.
+Vessel is an API-first marketplace for water tanker price discovery and booking in Pakistan. The MVP focuses on three cities: Karachi, Lahore, and Islamabad.
 
-Despite this scale, the market operates almost entirely informally. Consumers find providers through word of mouth, WhatsApp forwards, or phone directories. Prices are set arbitrarily and shift with fuel costs, seasonality, and demand spikes — sometimes doubling within a single year with no warning. There is no systematic way for a consumer to compare providers, track price trends, or get notified when rates change in their area.
+The problem is not lack of demand. The problem is market opacity. Consumers usually rely on informal networks, inconsistent pricing, and scattered providers. Vessel gives them one place to compare current rates, discover nearby providers, book reliably, and get notified when prices move.
 
----
-
-## 2. Existing Solutions and Their Failures
-
-Four solutions exist in this space. None of them solve the core problem.
-
-### KWSB Online Tanker System (Karachi)
-A government-operated mobile app for requesting tankers through KWSB hydrants. Structurally limited: it is a single-supplier system tied to one city's government infrastructure. In practice, the app is broken — the login screen fails, address submission hangs, and user reviews average under 2 stars with no updates since its last known patch cycle. It is a government portal, not a marketplace.
-
-### Waterlink (waterlink.pk)
-A Karachi-based operation that guarantees lower prices than the open market. The key detail: Waterlink *is* the provider. They manage their own fleet and their app is just an order form. There is no comparison between competitors, no rate visibility, and no data layer. Outside Karachi, it does not exist.
-
-### TankerWala.pk
-The most polished of the existing attempts. A mobile app that lets users select tanker size, drop a pin, and schedule delivery. On inspection: 2.0 stars, 12 user reviews, 1,000+ downloads, last updated May 2023, developer contact is a personal Gmail address. More critically, TankerWala is itself a single tanker company with an app — not a marketplace. There is no price comparison, no competing providers listed, no coverage outside Karachi. Three of the top reviews call it broken.
-
-### The Gap None of Them Address
-- No solution covers Lahore or Islamabad at all
-- No solution shows prices from multiple competing providers side by side
-- No solution tracks price history or lets consumers set rate-change alerts
-- No solution exposes a public API that developers or civic tools can build on
-- No solution applies any fraud-prevention pattern (e.g. idempotency) to bookings
+For providers, the MVP offers a structured way to publish rates and manage booking requests. For admins, it provides a basic analytics layer to monitor activity and pricing trends.
 
 ---
 
-## 3. What Vessel Does
+## 2. Problem Statement
 
-Vessel is a web-based, API-first platform for water tanker rate intelligence and booking management across Pakistani cities.
+In major Pakistani cities, water tanker supply is a routine need for homes, apartments, businesses, and societies. Yet the market is still largely informal:
 
-The core product has three layers:
+- prices vary sharply by area and season
+- consumers have limited visibility into competing providers
+- price history is not tracked in a usable way
+- duplicate booking submissions are easy to trigger
+- no practical public API exists for third-party tools or dashboards
 
-**Rate Intelligence** — Providers publish their price-per-gallon for specific geographic areas. Every rate change is stored, not overwritten. Consumers can view current rates across multiple providers for their area, see a 30-day price history, and subscribe to threshold alerts (e.g., "notify me when any provider in DHA Phase 6 exceeds Rs 4,500 for 1,000 gallons").
+Existing solutions are either single-provider apps, government portals, or low-trust products with limited coverage. None provide a true multi-provider marketplace with transparent pricing and a developer-friendly API.
 
-**Booking Engine** — Consumers book directly through the platform. Bookings are protected by an idempotency key to prevent duplicate submissions. Providers manage their own confirmed/cancelled status. Role-based access ensures providers can only modify their own listings.
+---
 
-**Open API** — Every feature is exposed through a documented REST API. Rate data, provider listings, booking flows, and alert subscriptions are all accessible programmatically. This makes Vessel a foundation that civic dashboards, property management tools, or third-party apps can build on — something no existing solution offers.
+## 3. MVP Goal
+
+The MVP should prove that Vessel can act as a usable source of truth for tanker rates and bookings in a limited but real market scope.
+
+By the end of the MVP, a user should be able to:
+
+- register as a consumer and log in
+- view areas and active provider rates
+- discover providers near a target location
+- submit a booking without duplicate creation on repeated requests
+- create and manage price alerts
+- receive real-time and job-driven alerting behavior
+- ask natural-language questions about internal market data
+
+By the end of the MVP, a provider should be able to:
+
+- log in with a provisioned provider account
+- publish and update area-specific rates
+- view booking requests assigned to them
+- confirm or cancel their own bookings
+
+By the end of the MVP, an admin should be able to:
+
+- access aggregate analytics
+- view high-level booking and price trends
+- access operational tools such as protected job dashboards
 
 ---
 
 ## 4. Target Users
 
-| User Type | What They Need |
+| User Type | Primary Need |
 |---|---|
-| **Consumer (Resident / Business)** | Find the cheapest provider in their area, book a delivery, get alerted to price spikes |
-| **Provider (Tanker Company)** | Publish and update their rates, manage incoming bookings, track their booking history |
-| **Admin** | Oversee platform activity, view aggregate analytics, manage users and providers |
-| **Developer / Third Party** | Access rate and availability data via API to build on top of the platform |
+| Consumer | Compare providers, book confidently, monitor price changes |
+| Provider | Publish rates, manage incoming demand, maintain visibility |
+| Admin | Monitor platform activity, pricing trends, and operations |
+| Developer / Third Party | Read structured rate and availability data through the API |
 
 ---
 
-## 5. Core Features
+## 5. Core MVP Features
 
-### 5.1 Area and Rate Management
-- Geographic coverage structured as: City → Area (e.g., Islamabad → F-10 Markaz)
-- Providers set price-per-gallon per area
-- Rate changes create a new history record — old rates are never deleted
-- Public endpoint for current rates requires no authentication
+### 5.1 Rate Intelligence
+
+Consumers can browse active provider rates for a selected area without authentication.
+
+MVP expectations:
+
+- geographic model is `City -> Area`
+- providers publish a price-per-gallon for each area they serve
+- historical rate changes are preserved instead of overwritten
+- consumers can view current rates and recent rate history
 
 ### 5.2 Provider Discovery
-- Search providers by area
-- Geolocation-based search: find providers within a specified radius using the Haversine formula
-- Results sorted by distance, then by price
-- No third-party geo libraries — algorithm implemented from scratch
+
+Consumers can find providers relevant to a location.
+
+MVP expectations:
+
+- discovery uses area coordinates and radius-based search
+- results are sorted by distance first, then by price
+- results represent active provider-area offerings, not generic provider directory listings
 
 ### 5.3 Booking Engine
-- Authenticated consumers book a provider for a specific area and volume
-- Idempotency key on every booking request — duplicate submissions return the existing booking
-- Booking status lifecycle: `Pending → Confirmed → Cancelled`
-- Providers can only confirm or cancel bookings assigned to them
+
+Consumers can place bookings through the platform and providers can act on their own requests.
+
+MVP expectations:
+
+- only authenticated consumers can create bookings
+- duplicate submissions are prevented with an idempotency key
+- bookings capture a price snapshot so later rate changes do not rewrite old bookings
+- providers can only update bookings assigned to them
+- booking lifecycle is intentionally simple: `Pending`, `Confirmed`, `Cancelled`
 
 ### 5.4 Price Alerts
-- Consumers subscribe to price thresholds for an area
-- Background job runs daily, compares current rates against subscriptions, queues notifications
-- Real-time push event when a provider updates their rate (delivered via SignalR to connected clients)
 
-### 5.5 Analytics (Admin)
-- Top 5 most-booked providers
-- Average price per city
-- Booking volume per day over the last 30 days
-- Price trend data per area over configurable time windows
+Consumers can define alert rules around pricing in an area.
 
-### 5.6 Authentication and Access Control
-- JWT-based authentication with refresh token rotation
-- Three roles: Consumer, Provider, Admin
-- Resource-based authorization: Providers can only edit their own rates
-- Rate limiting: 30 requests/minute per IP
+MVP expectations:
 
-### 5.7 AI-Powered Market Insights (RAG)
-- Users can naturally ask questions like "What is the cheapest time of year to book a tanker in DHA?" or "Why did prices spike last month?"
-- RAG (Retrieval-Augmented Generation) synthesizes historical price data, localized news (e.g., KWSB pipeline issues), and provider updates to provide natural language answers.
-- Implemented securely with vector embeddings of historical rate changes and system alerts.
+- alerts are created for an area and target volume
+- alert logic is based on total expected price for that chosen volume
+- provider rate updates can trigger immediate real-time events
+- scheduled jobs re-evaluate alerts on a recurring basis
 
----
+### 5.5 Authentication And Access Control
 
-## 6. Out of Scope (v1)
+The MVP uses role-based access control with three roles: Consumer, Provider, and Admin.
 
-The following are explicitly excluded from the initial version:
+MVP expectations:
 
-- Mobile application (responsive web only)
-- Payment processing or in-app transactions
-- Real-time driver tracking or GPS dispatch
-- Multi-language support (Urdu interface)
+- public self-registration is available only for consumers
+- provider and admin accounts are provisioned outside public signup
+- authentication uses access tokens and refresh token rotation
+- role boundaries are enforced across protected actions
 
----
+### 5.6 Admin Analytics
 
-## 7. Technical Stack
+Admins can inspect a small but useful set of platform metrics.
 
-| Layer | Technology |
-|---|---|
-| Frontend Web App | React (Vite) + TypeScript + Tailwind CSS |
-| Backend Framework | ASP.NET Core 10 (Controllers) |
-| AI / RAG Engine | Semantic Kernel + OpenAI |
-| Database | PostgreSQL via EF Core (code-first migrations) |
-| Vector Store | pgvector (for RAG embeddings) |
-| Caching | Redis |
-| Real-time | SignalR |
-| Containerization | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
+MVP expectations:
+
+- top providers by confirmed booking activity
+- average active prices by city
+- booking volume trends over time
+- price trends by area
+
+### 5.7 AI Market Insights
+
+The MVP includes a constrained AI feature focused on Vessel's own internal data.
+
+MVP expectations:
+
+- users can ask natural-language questions about internal market activity
+- answers are grounded in stored Vessel data such as rate changes and alert events
+- external news and broad web ingestion are not part of the MVP
 
 ---
 
-## 8. Architecture Overview
+## 6. User Experience Principles
 
-```text
-vessel-web/             ← React Frontend, Tailwind, Axios, React Query
-Vessel.API/             ← Controllers, Middleware, DI, SignalR, Swagger, Program.cs
-Vessel.Core/            ← Domain Entities, Enums, Domain Exceptions
-Vessel.Application/     ← DTOs, Validators, Service Interfaces, Persistence Interfaces
-Vessel.AI/              ← Semantic Kernel RAG Pipeline, Embeddings, Prompt Handling
-Vessel.Infrastructure/  ← EF Core, Repositories, Redis, pgvector, Hangfire, Auth
-Vessel.Tests/           ← xUnit unit and integration tests
-```
+The MVP should feel:
 
-The system runs as containerized Docker services encompassing the React Frontend, Backend API, PostgreSQL (with pgvector), and Redis. All secrets and connection strings are injected via environment variables.
+- transparent: users can see how rates differ across providers and areas
+- dependable: booking submission should not create accidental duplicates
+- fast to inspect: public rate lookup should work before a user commits to signup
+- role-aware: each user type should see only the actions relevant to them
+- extensible: the API should be usable by future frontend clients and third-party tools
 
 ---
 
-## 9. Web Application Features (Frontend)
+## 7. Scope Boundaries
 
-The frontend is a responsive Single Page Application (SPA) built with React and Tailwind CSS, focused on delivering a seamless experience across devices.
+### In Scope For MVP
 
-- **Consumer Dashboard:** Map-based interface for selecting areas, comparing prices using interactive charts, and booking deliveries. Features real-time price alert configuration.
-- **Provider Portal:** A dedicated workspace for tanker companies to update their per-gallon rates in bulk, view incoming booking requests, and manage fulfillment status.
-- **Admin Console:** High-level metrics dashboard showing market liquidity, price trends across cities, and system health.
-- **AI Chat Assistant:** A floating widget allowing users to query market trends using natural language, powered by the backend RAG pipeline.
+- Karachi, Lahore, and Islamabad
+- multi-provider rate comparison by area
+- provider discovery by location and radius
+- consumer bookings with idempotency protection
+- provider-side booking status updates
+- consumer price alerts
+- admin analytics
+- authenticated AI Q&A over internal Vessel data
+- documented REST API and responsive web client support
+
+### Out Of Scope For MVP
+
+- mobile apps
+- in-app payments
+- real-time driver tracking or dispatch logistics
+- Urdu or multilingual support
+- provider self-onboarding through public registration
+- external news ingestion for AI answers
+- advanced marketplace operations such as bulk procurement workflows
 
 ---
 
-## 10. Product Roadmap & Future Horizons
+## 8. Success Criteria
 
-The project implementation is structured sequentially, focusing entirely on the backend foundation before expanding to the frontend and AI capabilities:
+The MVP is successful if it demonstrates that the product can support a coherent end-to-end marketplace flow.
 
-- **Phase 1: Backend Foundation (Upcoming)** - Developing the core API, database schema, rate tracking, and booking abstraction using ASP.NET Core and PostgreSQL.
-- **Phase 2: Web Frontend** - Building the responsive React/Vite SPA, integrating with the backend API to deliver the Consumer Dashboard and Provider Portal.
-- **Phase 3: AI & Market Insights (RAG)** - Integrating the RAG pipeline with vector databases to generate natural language explanations for price volatility and market trends.
-- **Phase 4: Advanced Operations & B2B Expansion** - Partnering with large residential societies for automated bulk procurement and consolidated billing.
+Core success criteria:
+
+- consumers can compare active rates across providers in supported cities
+- a repeated booking request does not create duplicate bookings
+- providers can update rates and manage only their own bookings
+- price alerts can be created and can trigger correctly
+- admins can retrieve meaningful aggregate metrics
+- AI responses can reference internal market context rather than generic text generation
 
 ---
 
-## 11. Market Realities & Vision
+## 9. Non-Functional Product Expectations
 
-Vessel is designed as a fully functional, production-ready product aimed at solving a deeply entrenched, informal market problem in Pakistan. The goal is to build a robust technological foundation capable of handling real-world complexity without relying on "toy project" constraints.
+These are product-level expectations, not implementation prescriptions.
 
-While the technical architecture (backend, frontend, AI integrations) maps exactly to a real startup's needs, tackling the operational realities of the local water tanker scene—such as onboarding informal operators and enforcing transparent pricing models against the "tanker mafia"—presents significant offline challenges. Even if these real-world market friction points stall immediate commercial adoption, Vessel serves as an authentic system modeling a highly fragmented, dynamic market at scale.
+- API behavior should be documented and testable before the frontend is complete
+- access control must be reliable across Consumer, Provider, and Admin roles
+- errors should be consistent enough for frontend and third-party clients to handle cleanly
+- the system should support real-time price or alert event delivery where relevant
+- the MVP should be deployable and operable in a normal modern web stack
+
+---
+
+## 10. Frontend Product Surfaces
+
+The MVP web application should support four primary surfaces:
+
+- Consumer experience: browse rates, discover providers, create bookings, manage alerts
+- Provider experience: update rates, review booking requests, change booking status
+- Admin experience: inspect analytics and system operations
+- AI experience: ask product-specific market questions through a lightweight chat interface
+
+The frontend should be responsive web, not mobile-native.
+
+---
+
+## 11. MVP Roadmap
+
+The expected delivery order for the MVP is:
+
+1. backend foundation and API flows
+2. responsive web frontend
+3. AI insight layer on internal data
+4. post-MVP operational and expansion features
+
+This order matters because the API and booking integrity rules are the product foundation.
+
+---
+
+## 12. Product Vision
+
+If the MVP works, Vessel becomes more than a booking tool. It becomes a structured market layer for a fragmented, high-friction urban utility need.
+
+The long-term opportunity includes:
+
+- broader city coverage
+- deeper provider participation
+- stronger analytics and forecasting
+- richer procurement workflows for societies and businesses
+- ecosystem usage through the public API
+
+The MVP does not need to solve the full market. It needs to prove that transparency, structured bookings, and internal market intelligence create real product value in this category.

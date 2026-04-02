@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Vessel.AI/Vessel.AI.csproj" />
+  <Project Path="Vessel.API/Vessel.API.csproj" />
+  <Project Path="Vessel.Application/Vessel.Application.csproj" />
+  <Project Path="Vessel.Core/Vessel.Core.csproj" />
+  <Project Path="Vessel.Infrastructure/Vessel.Infrastructure.csproj" />
+  <Project Path="Vessel.Tests/Vessel.Tests.csproj" />
+</Solution>
