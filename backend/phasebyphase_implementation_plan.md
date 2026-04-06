@@ -2,8 +2,8 @@
 
 ## Status Snapshot
 
-- Current repo state: `backend/` currently contains only this plan file. The solution and all .NET projects still need to be created.
-- Handoff goal: another chat should be able to resume work from this file without re-deciding architecture, data contracts, or environment setup.
+- Current repo state: Solution and projects created. Phase 3 (Auth & Auth) is fully implemented and verified with unit tests.
+- Roadmap: Ready to start Phase 4 (Areas & Rate Intelligence).
 - Working directory for every command below unless stated otherwise: `d:\Projects\vessel\backend`
 
 ## Progress Tracker
@@ -12,7 +12,7 @@
 |---|---|---|
 | 1. Bootstrap And Local Setup | Completed | Verified build, docker, health-check, secrets, and Swagger. |
 | 2. Domain Model And Persistence | Completed | Full schema migrated, audited, and seeded with test data. |
-| 3. Authentication And Authorization | Not started | |
+| 3. Authentication And Authorization | Completed | JWT logic, token rotation, role policies, and controllers verified. |
 | 4. Areas And Rate Intelligence | Not started | |
 | 5. Provider Discovery | Not started | |
 | 6. Booking Engine And Idempotency | Not started | |
