@@ -2,6 +2,9 @@ using System.Reflection;
 using Microsoft.OpenApi;
 using Vessel.API.Extensions;
 using Vessel.API.Filters;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(
@@ -43,6 +46,31 @@ builder.Services.AddSwaggerGen(options =>
     securityRequirement.Add(new OpenApiSecuritySchemeReference("Bearer"), new List<string>());
     options.AddSecurityRequirement(_ => securityRequirement);
 });
+var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
+var jwtAudience = builder.Configuration["Jwt:Audience"]!;
+var jwtKey = builder.Configuration["Jwt:Key"]!;
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // False only in testing
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });   
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("ConsumerOnly", policy => policy.RequireRole(Vessel.Core.Enums.UserRole.Consumer.ToString()))
+    .AddPolicy("ProviderOnly", policy => policy.RequireRole(Vessel.Core.Enums.UserRole.Provider.ToString()))
+    .AddPolicy("AdminOnly", policy => policy.RequireRole(Vessel.Core.Enums.UserRole.Admin.ToString()));
 builder.Services.AddApplicationServices(builder.Configuration);
 var app = builder.Build();
 
@@ -58,7 +86,7 @@ if (app.Environment.IsDevelopment())
 }
 app.UseCors("VesselFrontend");
 app.UseHttpsRedirection();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

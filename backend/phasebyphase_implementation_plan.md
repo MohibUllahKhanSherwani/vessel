@@ -613,7 +613,7 @@ Note:
 
 ### Tasks
 
-1. Install the auth package in `Vessel.API`.
+1. Install the auth package in `Vessel.API`. From the backend folder.
 
 ```powershell
 dotnet add Vessel.API/Vessel.API.csproj package Microsoft.AspNetCore.Authentication.JwtBearer
@@ -622,7 +622,7 @@ dotnet add Vessel.API/Vessel.API.csproj package Microsoft.AspNetCore.Authenticat
 2. Create these folders in `Vessel.Application`.
 
 - `DTOs/Auth/`
-- `Interfaces/`
+- `Interfaces/Auth`
 - `Services/`
 
 3. Create auth DTOs.
@@ -653,8 +653,8 @@ dotnet add Vessel.API/Vessel.API.csproj package Microsoft.AspNetCore.Authenticat
 5. Implement auth services.
 
 - implement `AuthService` in `Vessel.Application/Services`
-- implement `JwtTokenService` in `Vessel.Infrastructure/Auth`
-- implement `PasswordHasherService` in `Vessel.Infrastructure/Auth`
+- implement `JwtTokenService` in `Vessel.Infrastructure/Services/Auth` (create missing folders along the way)
+- implement `PasswordHasherService` in `Vessel.Infrastructure/Services/Auth`
 - hash passwords securely
 - create access tokens
 - create refresh tokens
