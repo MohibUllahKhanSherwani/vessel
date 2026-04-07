@@ -8,5 +8,5 @@ public class RateDto
     public string AreaName { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
     public decimal PricePerGallon { get; set; }
-    public DateTime EffectiveFrom { get; set; }
+    public DateTimeOffset EffectiveFrom { get; set; }
 }

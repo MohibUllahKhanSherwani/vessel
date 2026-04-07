@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.OpenApi;
 using Vessel.API.Extensions;
 using Vessel.API.Filters;
+using Vessel.API.Hubs;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -11,6 +12,7 @@ builder.Services.AddControllers(
     options => {options.Filters.Add<ValidationFilter>();
     });
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("VesselFrontend", policy =>
@@ -90,5 +92,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<RateAlertHub>("/hubs/rates");
 
 app.Run();

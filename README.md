@@ -41,7 +41,11 @@ backend/
 
 ### Documentation
 - [**Full Product Requirements Document (PRD)**](vessel_prd.md)
-- [**Backend Implementation Roadmap**](backend/implementation_plan.md)
+- [**Backend Phase-by-Phase Implementation Roadmap**](backend/phasebyphase_implementation_plan.md)
+
+### Current Progress
+- ✅ **Phases 1-4 Complete**: Architecture, Database Seeding, Authentication Middleware, and Rate Intelligence. (Done)
+- 🚀 **Next Run**: Phase 5: Provider Discovery (Search/Haversine formula implementation).
 
 ---
 

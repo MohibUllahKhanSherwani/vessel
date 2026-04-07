@@ -832,12 +832,14 @@ Note: v1 Hub strategy is a global broadcast. Future optimization will use `Group
 
 ### Done When
 
-- Providers can create new rates
-- Rate history is preserved
-- Only one active rate exists per provider-area pair
-- SignalR broadcasts on successful rate changes
-- Mock services are removed from production DI
-- Swagger shows all rate endpoints with full schemas
+- [x] Providers can create new rates
+- [x] Rate history is preserved
+- [x] Only one active rate exists per provider-area pair
+- [x] SignalR broadcasts on successful rate changes
+- [x] Mock services are removed from production DI
+- [x] Swagger shows all rate endpoints with full schemas
+
+**[x] Phase 4: Completed and Verified**
 
 ## Phase 5: Provider Discovery
 

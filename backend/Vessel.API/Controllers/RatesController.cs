@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Vessel.API.Hubs;
 using Vessel.Application.DTOs.Rates;
 using Vessel.Application.Interfaces.Rates;
 
@@ -12,10 +14,12 @@ namespace Vessel.API.Controllers;
 public class RatesController : ControllerBase
 {
     private readonly IRateService _rateService;
+    private readonly IHubContext<RateAlertHub> _hubContext;
 
-    public RatesController(IRateService rateService)
+    public RatesController(IRateService rateService, IHubContext<RateAlertHub> hubContext)
     {
         _rateService = rateService;
+        _hubContext = hubContext;
     }
 
     /// <summary>
@@ -84,6 +88,7 @@ public class RatesController : ControllerBase
         var providerId = userId; 
 
         var createdRate = await _rateService.CreateRateAsync(providerId, request);
+        await _hubContext.Clients.All.SendAsync("RateChanged", createdRate);
         return CreatedAtAction(nameof(GetByArea), new { areaId = createdRate.AreaId }, createdRate);
     }
 }

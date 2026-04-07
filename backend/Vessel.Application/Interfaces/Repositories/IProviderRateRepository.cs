@@ -9,4 +9,5 @@ public interface IProviderRateRepository
     Task<IEnumerable<ProviderRate>> GetHistoryAsync(Guid providerId, Guid areaId);
     Task AddAsync(ProviderRate rate);
     Task UpdateAsync(ProviderRate rate);
+    Task ReplaceRateAsync(ProviderRate? oldRate, ProviderRate newRate);
 }
