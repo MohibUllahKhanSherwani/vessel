@@ -22,6 +22,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Vessel.Application.Interfaces.Auth.IJwtTokenService, Vessel.Infrastructure.Auth.JwtTokenService>();
         services.AddScoped<Vessel.Application.Interfaces.Auth.IAuthService, Vessel.Application.Services.AuthService>();
         
+        services.AddScoped<Vessel.Application.Interfaces.Areas.IAreaService, Vessel.Infrastructure.Mocks.MockAreaService>();
+        services.AddScoped<Vessel.Application.Interfaces.Rates.IRateService, Vessel.Infrastructure.Mocks.MockRateService>();
         services.AddFluentValidationAutoValidation()
         .AddValidatorsFromAssemblyContaining<Vessel.Application.Validators.Auth.RegisterRequestDtoValidator>();
         return services;

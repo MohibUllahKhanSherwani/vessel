@@ -17,6 +17,15 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<DbInitializer>();
 
+        // Repositories
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IAreaRepository, Vessel.Infrastructure.Repositories.AreaRepository>();
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IBookingRepository, Vessel.Infrastructure.Repositories.BookingRepository>();
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IPriceAlertRepository, Vessel.Infrastructure.Repositories.PriceAlertRepository>();
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IProviderRateRepository, Vessel.Infrastructure.Repositories.ProviderRateRepository>();
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IProviderRepository, Vessel.Infrastructure.Repositories.ProviderRepository>();
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IRefreshTokenRepository, Vessel.Infrastructure.Repositories.RefreshTokenRepository>();
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IUserRepository, Vessel.Infrastructure.Repositories.UserRepository>();
+
         return services;
     }
 }
