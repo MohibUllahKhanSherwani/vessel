@@ -24,6 +24,7 @@ public static class ServiceCollectionExtensions
         
         services.AddScoped<Vessel.Application.Interfaces.Areas.IAreaService, Vessel.Application.Services.AreaService>();
         services.AddScoped<Vessel.Application.Interfaces.Rates.IRateService, Vessel.Application.Services.RateService>();
+        services.AddScoped<Vessel.Application.Interfaces.Providers.IProviderDiscoveryService, Vessel.Infrastructure.Mocks.MockProviderDiscoveryService>();
         services.AddFluentValidationAutoValidation()
         .AddValidatorsFromAssemblyContaining<Vessel.Application.Validators.Auth.RegisterRequestDtoValidator>();
         return services;
