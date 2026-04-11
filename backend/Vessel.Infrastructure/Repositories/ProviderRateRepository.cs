@@ -64,7 +64,24 @@ public class ProviderRateRepository : IProviderRateRepository
         catch
         {
             await transaction.RollbackAsync();
-            throw;
         }
+    }
+
+    public async Task<IEnumerable<Vessel.Application.DTOs.Providers.ProviderSearchResultDto>> SearchActiveRatesAsync(IEnumerable<Guid> areaIds)
+    {
+        return await (from rate in _context.ProviderRates
+                      join provider in _context.Providers on rate.ProviderId equals provider.Id
+                      join area in _context.Areas on rate.AreaId equals area.Id
+                      where areaIds.Contains(rate.AreaId) && rate.EffectiveTo == null
+                      select new Vessel.Application.DTOs.Providers.ProviderSearchResultDto
+                      {
+                          ProviderId = rate.ProviderId,
+                          CompanyName = provider.CompanyName,
+                          AreaId = rate.AreaId,
+                          AreaName = area.Name,
+                          City = area.City,
+                          CurrentPricePerGallon = rate.PricePerGallon,
+                          DistanceKm = 0 // To be calculated in service
+                      }).ToListAsync();
     }
 }

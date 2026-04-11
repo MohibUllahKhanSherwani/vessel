@@ -10,4 +10,5 @@ public interface IProviderRateRepository
     Task AddAsync(ProviderRate rate);
     Task UpdateAsync(ProviderRate rate);
     Task ReplaceRateAsync(ProviderRate? oldRate, ProviderRate newRate);
+    Task<IEnumerable<Vessel.Application.DTOs.Providers.ProviderSearchResultDto>> SearchActiveRatesAsync(IEnumerable<Guid> areaIds);
 }

@@ -922,10 +922,12 @@ Use a query DTO instead of individual scalar parameters:
 
 ### Done When
 
-- Geo search returns the correct provider-area results
-- Sorting matches the PRD
-- Query parameters are validated
-- Swagger shows the search endpoint with all query parameters documented
+- [x] Geo search returns the correct provider-area results
+- [x] Sorting matches the PRD
+- [x] Query parameters are validated
+- [x] Swagger shows the search endpoint with all query parameters documented
+
+**[x] Phase 5: Completed and Verified**
 
 ## Phase 6: Booking Engine And Idempotency
 
