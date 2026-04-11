@@ -2,8 +2,6 @@
 
 ## Status Snapshot
 
-- Current repo state: Solution and projects created. Phase 3 (Auth & Auth) is fully implemented and verified with unit tests.
-- Roadmap: Ready to start Phase 4 (Areas & Rate Intelligence).
 - Working directory for every command below unless stated otherwise: `d:\Projects\vessel\backend`
 
 ## Progress Tracker

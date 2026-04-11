@@ -8,6 +8,9 @@ using Vessel.Application.Interfaces.Rates;
 
 namespace Vessel.API.Controllers;
 
+/// <summary>
+/// Controller for managing and retrieving fuel rates.
+/// </summary>
 [Route("api/[controller]")]
 [ApiController]
 [Tags("Rates")]
@@ -16,6 +19,11 @@ public class RatesController : ControllerBase
     private readonly IRateService _rateService;
     private readonly IHubContext<RateAlertHub> _hubContext;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RatesController"/> class.
+    /// </summary>
+    /// <param name="rateService">The rate service.</param>
+    /// <param name="hubContext">The hub context for signalr notifications.</param>
     public RatesController(IRateService rateService, IHubContext<RateAlertHub> hubContext)
     {
         _rateService = rateService;

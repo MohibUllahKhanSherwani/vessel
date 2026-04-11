@@ -4,6 +4,9 @@ using Vessel.Application.Interfaces.Providers;
 
 namespace Vessel.API.Controllers;
 
+/// <summary>
+/// Controller for discovering and searching fuel providers.
+/// </summary>
 [Route("api/[controller]")]
 [ApiController]
 [Tags("Providers")]
@@ -11,6 +14,10 @@ public class ProvidersController : ControllerBase
 {
     private readonly IProviderDiscoveryService _providerDiscoveryService;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ProvidersController"/> class.
+    /// </summary>
+    /// <param name="providerDiscoveryService">The provider discovery service.</param>
     public ProvidersController(IProviderDiscoveryService providerDiscoveryService)
     {
         _providerDiscoveryService = providerDiscoveryService;

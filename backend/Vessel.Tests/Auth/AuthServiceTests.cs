@@ -30,7 +30,7 @@ public class AuthServiceTests
         _passwordHasherMock = new Mock<IPasswordHasherService>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
 
-        var inMemorySettings = new System.Collections.Generic.Dictionary<string, string>
+        var inMemorySettings = new System.Collections.Generic.Dictionary<string, string?>
         {
             {"Jwt:AccessTokenMinutes", "60"},
             {"Jwt:RefreshTokenDays", "7"}

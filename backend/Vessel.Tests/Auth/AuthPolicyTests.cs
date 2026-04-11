@@ -16,7 +16,7 @@ public class AuthPolicyTests
     public void JwtTokenService_ShouldGenerateTokenWithConsumerRole_WhenUserIsConsumer()
     {
         // Arrange
-        var inMemorySettings = new Dictionary<string, string>
+        var inMemorySettings = new Dictionary<string, string?>
         {
             {"Jwt:Key", "super_secret_key_that_is_at_least_32_bytes_long_for_testing"},
             {"Jwt:Issuer", "TestIssuer"},
