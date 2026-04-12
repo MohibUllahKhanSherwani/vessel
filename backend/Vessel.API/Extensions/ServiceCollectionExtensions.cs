@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Vessel.Application.Interfaces.Rates.IRateService, Vessel.Application.Services.RateService>();
         services.AddScoped<Vessel.Application.Interfaces.Providers.IProviderDiscoveryService, Vessel.Application.Services.ProviderDiscoveryService>();
         services.AddScoped<Vessel.Application.Interfaces.Bookings.IBookingService, Vessel.Application.Services.BookingService>();
+        services.AddScoped<Vessel.Application.Interfaces.Alerts.IPriceAlertService, Vessel.Application.Services.PriceAlertService>();
         services.AddFluentValidationAutoValidation()
         .AddValidatorsFromAssemblyContaining<Vessel.Application.Validators.Auth.RegisterRequestDtoValidator>();
         return services;
