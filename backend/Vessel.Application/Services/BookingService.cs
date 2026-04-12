@@ -43,6 +43,14 @@ public class BookingService : IBookingService
         var existingBooking = await _bookingRepository.GetByIdempotencyKeyAsync(consumerId, idempotencyKey);
         if (existingBooking != null)
         {
+            // Verify payload matches the intent of the original request
+            if (existingBooking.ProviderId != dto.ProviderId || 
+                existingBooking.AreaId != dto.AreaId || 
+                existingBooking.VolumeInGallons != (int)dto.VolumeInGallons)
+            {
+                throw new InvalidOperationException("Idempotency key mismatch. A different booking request was already processed with this key.");
+            }
+
             var response = MapToResponse(existingBooking);
             await _cache.SetAsync(cacheKey, response, TimeSpan.FromHours(24));
             return response;

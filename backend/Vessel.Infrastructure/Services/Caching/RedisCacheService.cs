@@ -21,13 +21,20 @@ public class RedisCacheService : ICacheService
             return default;
         }
 
-        return JsonSerializer.Deserialize<T>(value!);
+        return JsonSerializer.Deserialize<T>(value.ToString());
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null)
     {
         var json = JsonSerializer.Serialize(value);
-        await _db.StringSetAsync(key, json, expiration);
+        if (expiration.HasValue)
+        {
+            await _db.StringSetAsync(key, json, expiration.Value);
+        }
+        else
+        {
+            await _db.StringSetAsync(key, json);
+        }
     }
 
     public async Task RemoveAsync(string key)
