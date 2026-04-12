@@ -1041,10 +1041,12 @@ dotnet add Vessel.Infrastructure/Vessel.Infrastructure.csproj package StackExcha
 
 ### Done When
 
-- Duplicate submissions do not create duplicate bookings
-- Booking pricing is stored as a snapshot
-- Provider ownership rules are enforced
-- Swagger documents the `Idempotency-Key` header on the POST endpoint
+- [x] Duplicate submissions do not create duplicate bookings
+- [x] Booking pricing is stored as a snapshot
+- [x] Provider ownership rules are enforced
+- [x] Swagger documents the `Idempotency-Key` header on the POST endpoint
+
+**[x] Phase 6: Completed and Verified**
 
 ## Phase 7: Price Alerts And Background Jobs
 
