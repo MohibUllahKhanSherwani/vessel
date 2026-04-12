@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 using Vessel.Infrastructure.Data;
 
 namespace Vessel.Infrastructure.Extensions;
@@ -14,6 +15,10 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(connectionString,
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+
+        var redisConnection = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
+        services.AddSingleton<Vessel.Application.Interfaces.Caching.ICacheService, Vessel.Infrastructure.Services.Caching.RedisCacheService>();
 
         services.AddScoped<DbInitializer>();
 
