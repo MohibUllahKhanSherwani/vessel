@@ -4,6 +4,24 @@
 
 - Working directory for every command below unless stated otherwise: `d:\Projects\vessel\backend`
 
+## How To Run
+
+1. **Start Dependencies**: Ensure Docker Desktop is running and start the database/cache services:
+   ```powershell
+   docker-compose up -d
+   ```
+2. **Apply Migrations**: (First time or when schema changes):
+   ```powershell
+   dotnet ef database update --project Vessel.Infrastructure
+   ```
+3. **Run API**:
+   ```powershell
+   dotnet run --project Vessel.API/Vessel.API.csproj
+   ```
+4. **Access UI**:
+   - **Swagger**: [https://localhost:7235/swagger](https://localhost:7235/swagger)
+   - **Hangfire**: [https://localhost:7235/hangfire](https://localhost:7235/hangfire) (Requires Admin Login)
+
 ## Progress Tracker
 
 | Phase | Status | Notes |
@@ -11,10 +29,10 @@
 | 1. Bootstrap And Local Setup | Completed | Verified build, docker, health-check, secrets, and Swagger. |
 | 2. Domain Model And Persistence | Completed | Full schema migrated, audited, and seeded with test data. |
 | 3. Authentication And Authorization | Completed | JWT logic, token rotation, role policies, and controllers verified. |
-| 4. Areas And Rate Intelligence | Not started | |
-| 5. Provider Discovery | Not started | |
-| 6. Booking Engine And Idempotency | Not started | |
-| 7. Price Alerts And Background Jobs | Not started | |
+| 4. Areas And Rate Intelligence | Completed | Rate history, local area caching, and SignalR broadcasts enabled. |
+| 5. Provider Discovery | Completed | Geo-search via Haversine and area-based filtering verified. |
+| 6. Booking Engine And Idempotency | Completed | Redis-backed idempotency and volume snapshots verified. |
+| 7. Price Alerts And Background Jobs | Completed | Hangfire monitoring and SignalR alert notifications verified. |
 | 8. Admin Analytics | Not started | |
 | 9. AI And RAG | Not started | |
 | 10. Hardening And Delivery | Not started | |
@@ -1138,6 +1156,8 @@ Clarification:
 - Duplicate notifications are suppressed for unchanged rates
 - All alert endpoints are documented in Swagger
 - Hangfire dashboard is admin-protected
+
+**[x] Phase 7: Completed and Verified**
 
 ## Phase 8: Admin Analytics
 
