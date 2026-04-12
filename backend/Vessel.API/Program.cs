@@ -6,6 +6,9 @@ using Vessel.API.Hubs;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Hangfire;
+using Hangfire.PostgreSql;
+using Vessel.API.BackgroundJobs;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(
@@ -23,6 +26,18 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
+
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")), new PostgreSqlStorageOptions 
+    {
+        SchemaName = "hangfire",
+        PrepareSchemaIfNecessary = true
+    }));
+
+builder.Services.AddHangfireServer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -90,6 +105,21 @@ app.UseCors("VesselFrontend");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new Vessel.API.Filters.HangfireAuthorizationFilter() }
+});
+
+// Schedule Background Jobs
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    recurringJobManager.AddOrUpdate<AlertTriggerJob>(
+        "daily-price-alert-check",
+        job => job.RunAsync(),
+        Cron.Daily);
+}
 
 app.MapControllers();
 app.MapHub<RateAlertHub>("/hubs/rates");
