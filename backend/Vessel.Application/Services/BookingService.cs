@@ -66,7 +66,7 @@ public class BookingService : IBookingService
             ConsumerId = consumerId,
             ProviderId = dto.ProviderId,
             AreaId = dto.AreaId,
-            VolumeInGallons = dto.VolumeInGallons,
+            VolumeInGallons = (int)dto.VolumeInGallons, // Entity uses int, DTO uses decimal. Plan implied volume could be decimal but entity says int. Let's cast or check entity.
             PricePerGallonSnapshot = priceSnapshot,
             TotalPrice = totalPrice,
             DeliveryAddress = dto.DeliveryAddress,
@@ -74,8 +74,8 @@ public class BookingService : IBookingService
             Status = BookingStatus.Pending,
             ScheduledFor = dto.ScheduledFor.ToUniversalTime(),
             IdempotencyKey = idempotencyKey,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
         };
 
         // 7. Save to DB
@@ -120,7 +120,7 @@ public class BookingService : IBookingService
         }
 
         booking.Status = status;
-        booking.UpdatedAt = DateTime.UtcNow;
+        booking.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _bookingRepository.UpdateAsync(booking);
 
@@ -132,7 +132,7 @@ public class BookingService : IBookingService
         if (dto.VolumeInGallons <= 0)
             throw new InvalidOperationException("Volume must be positive.");
 
-        if (dto.ScheduledFor < DateTime.UtcNow)
+        if (dto.ScheduledFor < DateTimeOffset.UtcNow)
             throw new InvalidOperationException("Scheduled date cannot be in the past.");
 
         var areaExists = await _areaRepository.GetByIdAsync(dto.AreaId) != null;

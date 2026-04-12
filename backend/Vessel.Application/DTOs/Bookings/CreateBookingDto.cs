@@ -14,7 +14,7 @@ public class CreateBookingDto
     public decimal VolumeInGallons { get; set; }
 
     [Required]
-    public DateTime ScheduledFor { get; set; }
+    public DateTimeOffset ScheduledFor { get; set; }
 
     [Required]
     [StringLength(500)]

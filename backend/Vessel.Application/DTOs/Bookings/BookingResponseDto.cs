@@ -14,7 +14,7 @@ public class BookingResponseDto
     public string DeliveryAddress { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public BookingStatus Status { get; set; }
-    public DateTime ScheduledFor { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    public DateTimeOffset ScheduledFor { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
 }

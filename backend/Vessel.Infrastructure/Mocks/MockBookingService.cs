@@ -40,8 +40,8 @@ public class MockBookingService : IBookingService
             Notes = dto.Notes,
             Status = BookingStatus.Pending,
             ScheduledFor = dto.ScheduledFor,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
         };
 
         _bookings[bookingId] = response;
@@ -83,7 +83,7 @@ public class MockBookingService : IBookingService
         }
 
         booking.Status = status;
-        booking.UpdatedAt = DateTime.UtcNow;
+        booking.UpdatedAt = DateTimeOffset.UtcNow;
 
         return Task.FromResult(booking);
     }
