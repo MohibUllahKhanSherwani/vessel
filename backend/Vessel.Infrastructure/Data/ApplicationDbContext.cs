@@ -29,7 +29,7 @@ public class ApplicationDbContext : DbContext
             var auditable = (IAuditableEntity)entityEntry.Entity;
             auditable.UpdatedAt = DateTimeOffset.UtcNow;
 
-            if (entityEntry.State == EntityState.Added)
+            if (entityEntry.State == EntityState.Added && auditable.CreatedAt == default)
             {
                 auditable.CreatedAt = DateTimeOffset.UtcNow;
             }
