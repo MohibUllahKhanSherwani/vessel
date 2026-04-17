@@ -43,14 +43,15 @@ public class AnalyticsController : ControllerBase
     /// <summary>
     /// Gets average price per gallon grouped by city.
     /// </summary>
+    /// <param name="city">Optional city to filter by.</param>
     /// <returns>A list of average prices by city.</returns>
     [HttpGet("average-prices")]
     [ProducesResponseType(typeof(IEnumerable<AveragePriceDto>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
-    public async Task<ActionResult<IEnumerable<AveragePriceDto>>> GetAveragePrices()
+    public async Task<ActionResult<IEnumerable<AveragePriceDto>>> GetAveragePrices([FromQuery] string? city = null)
     {
-        var result = await _analyticsService.GetAveragePricesByCityAsync();
+        var result = await _analyticsService.GetAveragePricesByCityAsync(city);
         return Ok(result);
     }
 
@@ -72,15 +73,16 @@ public class AnalyticsController : ControllerBase
     /// <summary>
     /// Gets price trends over time.
     /// </summary>
+    /// <param name="areaId">Optional area identifier to filter by.</param>
     /// <param name="days">The number of days to look back.</param>
     /// <returns>A list of daily average prices.</returns>
     [HttpGet("price-trends")]
     [ProducesResponseType(typeof(IEnumerable<PriceTrendDto>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
-    public async Task<ActionResult<IEnumerable<PriceTrendDto>>> GetPriceTrends([FromQuery] int days = 30)
+    public async Task<ActionResult<IEnumerable<PriceTrendDto>>> GetPriceTrends([FromQuery] Guid? areaId = null, [FromQuery] int days = 30)
     {
-        var result = await _analyticsService.GetPriceTrendsAsync(days);
+        var result = await _analyticsService.GetPriceTrendsAsync(areaId, days);
         return Ok(result);
     }
 }

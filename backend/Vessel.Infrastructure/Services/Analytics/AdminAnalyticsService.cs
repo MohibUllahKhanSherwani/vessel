@@ -35,20 +35,27 @@ public class AdminAnalyticsService : IAdminAnalyticsService
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<AveragePriceDto>> GetAveragePricesByCityAsync()
+    public async Task<IEnumerable<AveragePriceDto>> GetAveragePricesByCityAsync(string? city = null)
     {
         var query = from r in _context.ProviderRates
                     join a in _context.Areas on r.AreaId equals a.Id
                     where r.EffectiveTo == null
-                    group new { r, a } by a.City into g
-                    select new AveragePriceDto
-                    {
-                        City = g.Key,
-                        AveragePricePerGallon = g.Average(x => x.r.PricePerGallon),
-                        ActiveProviderCount = g.Select(x => x.r.ProviderId).Distinct().Count()
-                    };
+                    select new { r, a };
 
-        return await query.ToListAsync();
+        if (!string.IsNullOrEmpty(city))
+        {
+            query = query.Where(x => x.a.City.ToLower() == city.ToLower());
+        }
+
+        return await query
+            .GroupBy(x => x.a.City)
+            .Select(g => new AveragePriceDto
+            {
+                City = g.Key,
+                AveragePricePerGallon = g.Average(x => x.r.PricePerGallon),
+                ActiveProviderCount = g.Select(x => x.r.ProviderId).Distinct().Count()
+            })
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<VolumeTrendDto>> GetVolumeTrendsAsync(int days = 30)
@@ -68,12 +75,17 @@ public class AdminAnalyticsService : IAdminAnalyticsService
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<PriceTrendDto>> GetPriceTrendsAsync(int days = 30)
+    public async Task<IEnumerable<PriceTrendDto>> GetPriceTrendsAsync(Guid? areaId = null, int days = 30)
     {
         var startDate = DateTimeOffset.UtcNow.AddDays(-days);
+        var query = _context.Bookings.Where(b => b.CreatedAt >= startDate);
 
-        return await _context.Bookings
-            .Where(b => b.CreatedAt >= startDate)
+        if (areaId.HasValue)
+        {
+            query = query.Where(b => b.AreaId == areaId.Value);
+        }
+
+        return await query
             .GroupBy(b => b.CreatedAt.Date)
             .Select(g => new PriceTrendDto
             {
