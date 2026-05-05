@@ -50,9 +50,12 @@ backend/
 ---
 
 ### Getting Started
-**Local Services (PostgreSQL + Redis + pgvector):**
+**Use Supabase Cloud for PostgreSQL:**
+Follow [backend/SUPABASE_CLOUD_SETUP.md](backend/SUPABASE_CLOUD_SETUP.md) and store the real database connection string in user-secrets.
+
+**Local Services (Redis only for normal development):**
 ```bash
-docker compose up -d
+docker compose -f backend/docker-compose.yml up -d redis
 ```
 **Run the API:**
 ```bash
@@ -60,7 +63,7 @@ dotnet run --project backend/Vessel.API
 ```
 > [!NOTE]
 > AI features require a valid `Gemini:ApiKey` in `appsettings.json` or as an environment variable.
-> Vector features require the `vector` extension enabled in PostgreSQL.
+> Vector features require the `vector` extension enabled in Supabase PostgreSQL.
 
 *Swagger UI will be available at `/swagger` once launched.*
 
