@@ -14,7 +14,10 @@ public static class ServiceCollectionExtensions
         
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(connectionString,
-                b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+                o => {
+                    o.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName);
+                    o.UseVector();
+                }));
 
         var redisConnection = configuration.GetConnectionString("Redis") ?? "localhost:6379";
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
@@ -29,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Vessel.Application.Interfaces.Repositories.IProviderRateRepository, Vessel.Infrastructure.Repositories.ProviderRateRepository>();
         services.AddScoped<Vessel.Application.Interfaces.Repositories.IProviderRepository, Vessel.Infrastructure.Repositories.ProviderRepository>();
         services.AddScoped<Vessel.Application.Interfaces.Repositories.IRefreshTokenRepository, Vessel.Infrastructure.Repositories.RefreshTokenRepository>();
+        services.AddScoped<Vessel.Application.Interfaces.Repositories.IRateEmbeddingRepository, Vessel.Infrastructure.Repositories.RateEmbeddingRepository>();
         services.AddScoped<Vessel.Application.Interfaces.Repositories.IUserRepository, Vessel.Infrastructure.Repositories.UserRepository>();
 
         return services;

@@ -2,6 +2,8 @@ using Vessel.Application.DTOs.Rates;
 using Vessel.Application.Interfaces.Rates;
 using Vessel.Application.Interfaces.Repositories;
 using Vessel.Core.Entities;
+using Hangfire;
+using Vessel.Application.Services.AI;
 
 namespace Vessel.Application.Services;
 
@@ -10,12 +12,14 @@ public class RateService : IRateService
     private readonly IProviderRateRepository _rateRepository;
     private readonly IProviderRepository _providerRepository;
     private readonly IAreaRepository _areaRepository;
+    private readonly Hangfire.IBackgroundJobClient _backgroundJobClient;
 
-    public RateService(IProviderRateRepository rateRepository, IProviderRepository providerRepository, IAreaRepository areaRepository)
+    public RateService(IProviderRateRepository rateRepository, IProviderRepository providerRepository, IAreaRepository areaRepository, Hangfire.IBackgroundJobClient backgroundJobClient)
     {
         _rateRepository = rateRepository;
         _providerRepository = providerRepository;
         _areaRepository = areaRepository;
+        _backgroundJobClient = backgroundJobClient;
     }
 
     public async Task<List<RateDto>> GetRatesByAreaAsync(Guid areaId)
@@ -84,6 +88,9 @@ public class RateService : IRateService
         };
 
         await _rateRepository.ReplaceRateAsync(activeRate, newRate);
+
+        _backgroundJobClient.Enqueue<AiEmbeddingJob>(
+            j => j.ProcessRateChangeAsync(newRate.Id));
 
         return new RateDto
         {

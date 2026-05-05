@@ -17,18 +17,20 @@ public class RateServiceTests
     private readonly Mock<IProviderRateRepository> _mockRateRepository;
     private readonly Mock<IProviderRepository> _mockProviderRepository;
     private readonly Mock<IAreaRepository> _mockAreaRepository;
+    private readonly Mock<Hangfire.IBackgroundJobClient> _mockBackgroundJobClient;
     private readonly RateService _sut;
-
     public RateServiceTests()
     {
         _mockRateRepository = new Mock<IProviderRateRepository>();
         _mockProviderRepository = new Mock<IProviderRepository>();
         _mockAreaRepository = new Mock<IAreaRepository>();
+        _mockBackgroundJobClient = new Mock<Hangfire.IBackgroundJobClient>();
 
         _sut = new RateService(
             _mockRateRepository.Object,
             _mockProviderRepository.Object,
-            _mockAreaRepository.Object);
+            _mockAreaRepository.Object,
+            _mockBackgroundJobClient.Object);
     }
 
     [Fact]

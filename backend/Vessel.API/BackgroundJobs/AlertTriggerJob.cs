@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Vessel.API.Hubs;
 using Vessel.Core.Enums;
 using Vessel.Infrastructure.Data;
+using Vessel.Application.Services.AI;
+using Hangfire;
 
 namespace Vessel.API.BackgroundJobs;
 
@@ -13,16 +15,13 @@ public class AlertTriggerJob
 {
     private readonly ApplicationDbContext _context;
     private readonly IHubContext<RateAlertHub> _hubContext;
+    private readonly Hangfire.IBackgroundJobClient _backgroundJobClient;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AlertTriggerJob"/> class.
-    /// </summary>
-    /// <param name="context">The database context.</param>
-    /// <param name="hubContext">The SignalR hub context.</param>
-    public AlertTriggerJob(ApplicationDbContext context, IHubContext<RateAlertHub> hubContext)
+    public AlertTriggerJob(ApplicationDbContext context, IHubContext<RateAlertHub> hubContext, Hangfire.IBackgroundJobClient backgroundJobClient)
     {
         _context = context;
         _hubContext = hubContext;
+        _backgroundJobClient = backgroundJobClient;
     }
 
     /// <summary>
@@ -80,6 +79,9 @@ public class AlertTriggerJob
                         TotalAtCurrentPrice = currentTotalPrice,
                         Threshold = alert.ThresholdTotalPrice
                     });
+
+                _backgroundJobClient.Enqueue<AiEmbeddingJob>(
+                    j => j.ProcessAlertTriggerAsync(alert.Id, bestRate.Id));
             }
         }
 

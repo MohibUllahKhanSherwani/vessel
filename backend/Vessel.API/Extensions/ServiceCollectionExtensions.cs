@@ -28,6 +28,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Vessel.Application.Interfaces.Bookings.IBookingService, Vessel.Application.Services.BookingService>();
         services.AddScoped<Vessel.Application.Interfaces.Alerts.IPriceAlertService, Vessel.Application.Services.PriceAlertService>();
         services.AddScoped<Vessel.Application.Interfaces.Analytics.IAdminAnalyticsService, Vessel.Infrastructure.Services.Analytics.AdminAnalyticsService>();
+        
+        services.AddScoped<Vessel.Application.Interfaces.AI.IEmbeddingGeneratorService, Vessel.AI.Services.EmbeddingGeneratorService>();
+        services.AddScoped<Vessel.Application.Interfaces.AI.IRagQueryService, Vessel.AI.Services.RagQueryService>();
+        services.AddScoped<Vessel.Application.Services.AI.AiEmbeddingJob>();
         services.AddFluentValidationAutoValidation()
         .AddValidatorsFromAssemblyContaining<Vessel.Application.Validators.Auth.RegisterRequestDtoValidator>();
         return services;

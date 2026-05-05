@@ -44,8 +44,8 @@ backend/
 - [**Backend Phase-by-Phase Implementation Roadmap**](backend/phasebyphase_implementation_plan.md)
 
 ### Current Progress
-- ✅ **Phases 1-4 Complete**: Architecture, Database Seeding, Authentication Middleware, and Rate Intelligence. (Done)
-- 🚀 **Next Run**: Phase 5: Provider Discovery (Search/Haversine formula implementation).
+- ✅ **Phases 1-9 Complete**: Architecture, Database Seeding, Authentication, Rate Intelligence, Provider Discovery, Booking Engine, Price Alerts, Admin Analytics, and AI RAG Integration.
+- 🚀 **Next Run**: Phase 10: Hardening & Delivery (Final system walkthrough and polishing).
 
 ---
 
@@ -58,6 +58,10 @@ docker compose up -d
 ```bash
 dotnet run --project backend/Vessel.API
 ```
+> [!NOTE]
+> AI features require a valid `Gemini:ApiKey` in `appsettings.json` or as an environment variable.
+> Vector features require the `vector` extension enabled in PostgreSQL.
+
 *Swagger UI will be available at `/swagger` once launched.*
 
 ---

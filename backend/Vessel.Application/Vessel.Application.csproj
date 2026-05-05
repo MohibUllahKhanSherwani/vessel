@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.23" />
   </ItemGroup>
 
   <PropertyGroup>

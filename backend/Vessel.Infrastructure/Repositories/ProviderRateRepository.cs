@@ -14,6 +14,11 @@ public class ProviderRateRepository : IProviderRateRepository
         _context = context;
     }
 
+    public async Task<ProviderRate?> GetByIdAsync(Guid id)
+    {
+        return await _context.ProviderRates.FindAsync(id);
+    }
+
     public async Task<ProviderRate?> GetActiveRateAsync(Guid providerId, Guid areaId)
     {
         return await _context.ProviderRates

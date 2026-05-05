@@ -33,9 +33,9 @@
 | 5. Provider Discovery | Completed | Geo-search via Haversine and area-based filtering verified. |
 | 6. Booking Engine And Idempotency | Completed | Redis-backed idempotency and volume snapshots verified. |
 | 7. Price Alerts And Background Jobs | Completed | Hangfire monitoring and SignalR alert notifications verified. |
-| 8. Admin Analytics | Not started | |
-| 9. AI And RAG | Not started | |
-| 10. Hardening And Delivery | Not started | |
+| 8. Admin Analytics | Completed | Top providers, volume trends, and city-based price averages. |
+| 9. AI And RAG | Completed | AI insights, pgvector integration, and async embedding generation. |
+| 10. Hardening And Delivery | In Progress | Final verification and hardening. |
 
 Update this table whenever a phase starts or finishes.
 

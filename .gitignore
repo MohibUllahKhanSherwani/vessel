@@ -37,3 +37,6 @@ dist-ssr/
 
 # Documentation and Plans
 backend/implementation_plan.md
+
+# Generated knowledge graph outputs
+**/graphify-out/

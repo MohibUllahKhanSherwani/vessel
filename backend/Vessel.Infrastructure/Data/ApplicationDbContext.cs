@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProviderRate> ProviderRates => Set<ProviderRate>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<PriceAlert> PriceAlerts => Set<PriceAlert>();
+    public DbSet<RateEmbedding> RateEmbeddings => Set<RateEmbedding>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -40,6 +41,10 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.HasPostgresExtension("vector");
+        }
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }
