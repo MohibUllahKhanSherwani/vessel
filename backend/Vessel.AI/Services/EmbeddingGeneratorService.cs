@@ -5,6 +5,7 @@ using Vessel.Application.Interfaces.AI;
 
 namespace Vessel.AI.Services;
 
+#pragma warning disable CS0618
 public class EmbeddingGeneratorService : IEmbeddingGeneratorService
 {
     private readonly ITextEmbeddingGenerationService _embeddingService;
@@ -28,3 +29,4 @@ public class EmbeddingGeneratorService : IEmbeddingGeneratorService
         return result.ToArray();
     }
 }
+#pragma warning restore CS0618

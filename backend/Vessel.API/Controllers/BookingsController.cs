@@ -7,6 +7,9 @@ using Vessel.Core.Enums;
 
 namespace Vessel.API.Controllers;
 
+/// <summary>
+/// Handles booking creation and booking lifecycle endpoints.
+/// </summary>
 [Route("api/[controller]")]
 [ApiController]
 [Tags("Bookings")]
@@ -14,6 +17,10 @@ public class BookingsController : ControllerBase
 {
     private readonly IBookingService _bookingService;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BookingsController"/> class.
+    /// </summary>
+    /// <param name="bookingService">The booking service.</param>
     public BookingsController(IBookingService bookingService)
     {
         _bookingService = bookingService;

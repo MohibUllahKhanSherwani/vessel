@@ -21,7 +21,7 @@ public class RateEmbeddingConfiguration : IEntityTypeConfiguration<RateEmbedding
                
         // The vector dimension for Gemini text-embedding-004 is 768.
         // We only apply the PostgreSQL vector type and converter if we are using Npgsql.
-        if (builder.Metadata.Model.GetProductVersion().Contains("Npgsql") || 
+        if (builder.Metadata.Model.GetProductVersion()?.Contains("Npgsql") == true || 
             builder.Metadata.Model.FindAnnotation("Relational:DatabaseProvider")?.Value?.ToString() == "Npgsql.EntityFrameworkCore.PostgreSQL")
         {
             builder.Property(e => e.Embedding)

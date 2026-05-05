@@ -5,6 +5,9 @@ using Vessel.Application.Interfaces.AI;
 
 namespace Vessel.API.Controllers;
 
+/// <summary>
+/// Provides AI-powered market insight endpoints.
+/// </summary>
 [Route("api/ai")]
 [ApiController]
 [Tags("AI")]
@@ -13,6 +16,10 @@ public class AiInsightsController : ControllerBase
 {
     private readonly IRagQueryService _ragService;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AiInsightsController"/> class.
+    /// </summary>
+    /// <param name="ragService">The RAG query service.</param>
     public AiInsightsController(IRagQueryService ragService)
     {
         _ragService = ragService;

@@ -17,6 +17,12 @@ public class AlertTriggerJob
     private readonly IHubContext<RateAlertHub> _hubContext;
     private readonly Hangfire.IBackgroundJobClient _backgroundJobClient;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AlertTriggerJob"/> class.
+    /// </summary>
+    /// <param name="context">The application database context.</param>
+    /// <param name="hubContext">The SignalR hub context used for alert notifications.</param>
+    /// <param name="backgroundJobClient">The Hangfire client used to enqueue follow-up jobs.</param>
     public AlertTriggerJob(ApplicationDbContext context, IHubContext<RateAlertHub> hubContext, Hangfire.IBackgroundJobClient backgroundJobClient)
     {
         _context = context;

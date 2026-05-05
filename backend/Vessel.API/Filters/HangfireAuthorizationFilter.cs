@@ -8,6 +8,11 @@ namespace Vessel.API.Filters;
 /// </summary>
 public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
+    /// <summary>
+    /// Determines whether the current user can access the Hangfire dashboard.
+    /// </summary>
+    /// <param name="context">The Hangfire dashboard context.</param>
+    /// <returns><c>true</c> when the user is authenticated as an admin.</returns>
     public bool Authorize(DashboardContext context)
     {
         var httpContext = context.GetHttpContext();
