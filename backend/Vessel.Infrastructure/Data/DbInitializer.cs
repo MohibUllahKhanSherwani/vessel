@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Npgsql;
+using System.Net.Sockets;
 using Vessel.Core.Entities;
 using Vessel.Core.Enums;
 
@@ -31,6 +33,32 @@ public class DbInitializer
 
             await _context.SaveChangesAsync();
             _logger.LogInformation("Database seeding completed.");
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InvalidPassword)
+        {
+            var connectionDetails = GetConnectionDetails();
+            _logger.LogError(ex,
+                "Supabase authentication failed for {Username}@{Host}:{Port}/{Database}. " +
+                "For IPv4 development environments, copy the exact Session pooler connection string from Supabase Connect and replace the password placeholder with your database password. " +
+                "Do not hand-build the pooler host. If the string already came from Connect, reset the database password in Supabase and update user-secrets.",
+                connectionDetails.Username,
+                connectionDetails.Host,
+                connectionDetails.Port,
+                connectionDetails.Database);
+            throw;
+        }
+        catch (NpgsqlException ex) when (
+            ex.InnerException is SocketException socketEx &&
+            (socketEx.SocketErrorCode == SocketError.HostNotFound || socketEx.SocketErrorCode == SocketError.NoData))
+        {
+            var connectionDetails = GetConnectionDetails();
+            _logger.LogError(ex,
+                "Supabase host resolution failed for {Host}:{Port}. " +
+                "The direct db.<project-ref>.supabase.co hostname is commonly IPv6-only. " +
+                "If your network is IPv4-only, use the exact Session pooler connection string from Supabase Connect instead of the direct host.",
+                connectionDetails.Host,
+                connectionDetails.Port);
+            throw;
         }
         catch (Exception ex)
         {
@@ -95,5 +123,17 @@ public class DbInitializer
             _context.Providers.Add(providerRecord);
             _logger.LogInformation("Seeding Provider account: {Email}", providerEmail);
         }
+    }
+
+    private (string Host, int Port, string Database, string Username) GetConnectionDetails()
+    {
+        var connectionString = _configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+        return (
+            builder.Host ?? "(missing-host)",
+            builder.Port,
+            builder.Database ?? "(missing-database)",
+            builder.Username ?? "(missing-username)");
     }
 }

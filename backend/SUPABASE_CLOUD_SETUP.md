@@ -26,6 +26,13 @@ Session pooler usernames usually look like:
 postgres.<project-ref>
 ```
 
+Important:
+
+- Copy the **exact** Session pooler host from Supabase Dashboard -> **Connect**.
+  Do not guess or hand-build `aws-<n>-<region>.pooler.supabase.com`.
+- Replace the password placeholder with the project's **database password**,
+  not the anon key, service role key, or any API key.
+
 ## 2. Store Secrets Locally
 
 Run these from the repository root:
@@ -69,3 +76,17 @@ https://localhost:7235/swagger
   schema.
 - Keep local `postgres-test` for tests if you later add integration tests that
   should not touch Supabase.
+
+## Troubleshooting
+
+- `The requested name is valid, but no data of the requested type was found`
+  usually means you used the direct `db.<project-ref>.supabase.co` host on an
+  IPv4-only network. Switch to the exact **Session pooler** string from
+  Supabase Connect.
+- `28P01: password authentication failed for user "postgres"` usually means
+  one of two things:
+  - the Session pooler host was guessed instead of copied from Supabase Connect
+  - the database password is wrong and should be reset in Supabase Database
+    Settings before updating `dotnet user-secrets`
+- Supabase pooler/auth errors can still mention `postgres` even when your
+  username is the Session pooler form `postgres.<project-ref>`.
