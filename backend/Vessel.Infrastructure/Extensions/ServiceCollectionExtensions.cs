@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using StackExchange.Redis;
 using Vessel.Infrastructure.Data;
+using Vessel.Infrastructure.Services.Caching;
 
 namespace Vessel.Infrastructure.Extensions;
 
@@ -10,18 +10,12 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-        
+        // Use EF Core In-Memory database — no Postgres, no Docker required
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString,
-                o => {
-                    o.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName);
-                    o.UseVector();
-                }));
+            options.UseInMemoryDatabase("VesselLocalDemo"));
 
-        var redisConnection = configuration.GetConnectionString("Redis") ?? "localhost:6379";
-        services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
-        services.AddSingleton<Vessel.Application.Interfaces.Caching.ICacheService, Vessel.Infrastructure.Services.Caching.RedisCacheService>();
+        // In-memory cache — no Redis required
+        services.AddSingleton<Vessel.Application.Interfaces.Caching.ICacheService, MemoryCacheService>();
 
         services.AddScoped<DbInitializer>();
 

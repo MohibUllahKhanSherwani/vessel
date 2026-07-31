@@ -3,31 +3,27 @@ using Microsoft.EntityFrameworkCore;
 using Vessel.API.Hubs;
 using Vessel.Core.Enums;
 using Vessel.Infrastructure.Data;
-using Vessel.Application.Services.AI;
-using Hangfire;
 
 namespace Vessel.API.BackgroundJobs;
 
 /// <summary>
-/// Background job to check price alerts and notify consumers via SignalR.
+/// Core logic for price alert evaluation. Used by AlertTriggerHostedService.
+/// Kept as a standalone class to allow direct unit testing.
 /// </summary>
 public class AlertTriggerJob
 {
     private readonly ApplicationDbContext _context;
     private readonly IHubContext<RateAlertHub> _hubContext;
-    private readonly Hangfire.IBackgroundJobClient _backgroundJobClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AlertTriggerJob"/> class.
     /// </summary>
     /// <param name="context">The application database context.</param>
     /// <param name="hubContext">The SignalR hub context used for alert notifications.</param>
-    /// <param name="backgroundJobClient">The Hangfire client used to enqueue follow-up jobs.</param>
-    public AlertTriggerJob(ApplicationDbContext context, IHubContext<RateAlertHub> hubContext, Hangfire.IBackgroundJobClient backgroundJobClient)
+    public AlertTriggerJob(ApplicationDbContext context, IHubContext<RateAlertHub> hubContext)
     {
         _context = context;
         _hubContext = hubContext;
-        _backgroundJobClient = backgroundJobClient;
     }
 
     /// <summary>
@@ -85,9 +81,6 @@ public class AlertTriggerJob
                         TotalAtCurrentPrice = currentTotalPrice,
                         Threshold = alert.ThresholdTotalPrice
                     });
-
-                _backgroundJobClient.Enqueue<AiEmbeddingJob>(
-                    j => j.ProcessAlertTriggerAsync(alert.Id, bestRate.Id));
             }
         }
 

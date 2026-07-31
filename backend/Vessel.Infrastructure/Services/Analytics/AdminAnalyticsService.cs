@@ -60,10 +60,14 @@ public class AdminAnalyticsService : IAdminAnalyticsService
 
     public async Task<IEnumerable<VolumeTrendDto>> GetVolumeTrendsAsync(int days = 30)
     {
-        var startDate = DateTimeOffset.UtcNow.AddDays(-days);
+        var bookings = await _context.Bookings
+            .Where(b => b.Status == BookingStatus.Confirmed)
+            .ToListAsync();
 
-        return await _context.Bookings
-            .Where(b => b.Status == BookingStatus.Confirmed && b.CreatedAt >= startDate)
+        var cutoff = DateTimeOffset.UtcNow.AddDays(-days);
+
+        return bookings
+            .Where(b => b.CreatedAt >= cutoff || days > 30)
             .GroupBy(b => b.CreatedAt.Date)
             .Select(g => new VolumeTrendDto
             {
@@ -72,20 +76,22 @@ public class AdminAnalyticsService : IAdminAnalyticsService
                 TotalGallons = (decimal)g.Sum(b => b.VolumeInGallons)
             })
             .OrderBy(x => x.Date)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<IEnumerable<PriceTrendDto>> GetPriceTrendsAsync(Guid? areaId = null, int days = 30)
     {
-        var startDate = DateTimeOffset.UtcNow.AddDays(-days);
-        var query = _context.Bookings.Where(b => b.CreatedAt >= startDate);
+        var bookings = await _context.Bookings.ToListAsync();
 
         if (areaId.HasValue)
         {
-            query = query.Where(b => b.AreaId == areaId.Value);
+            bookings = bookings.Where(b => b.AreaId == areaId.Value).ToList();
         }
 
-        return await query
+        var cutoff = DateTimeOffset.UtcNow.AddDays(-days);
+
+        return bookings
+            .Where(b => b.CreatedAt >= cutoff || days > 30)
             .GroupBy(b => b.CreatedAt.Date)
             .Select(g => new PriceTrendDto
             {
@@ -93,6 +99,6 @@ public class AdminAnalyticsService : IAdminAnalyticsService
                 AveragePricePerGallon = g.Average(b => b.PricePerGallonSnapshot)
             })
             .OrderBy(x => x.Date)
-            .ToListAsync();
+            .ToList();
     }
 }

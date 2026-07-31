@@ -10,10 +10,6 @@ public class ProviderRateConfiguration : IEntityTypeConfiguration<ProviderRate>
     {
         builder.HasKey(e => e.Id);
         builder.Property(e => e.PricePerGallon).HasPrecision(18, 4);
-        
-        builder.HasIndex(e => new { e.ProviderId, e.AreaId })
-               .IsUnique()
-               .HasFilter("\"EffectiveTo\" IS NULL");
 
         builder.HasOne<Provider>()
                .WithMany()

@@ -6,13 +6,11 @@ using Vessel.API.Hubs;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Hangfire;
-using Hangfire.PostgreSql;
 using Vessel.API.BackgroundJobs;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(
-    options => {options.Filters.Add<ValidationFilter>();
+    options =>{options.Filters.Add<ValidationFilter>();
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
@@ -27,24 +25,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddHangfire(config => config
-    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")), new PostgreSqlStorageOptions 
-    {
-        SchemaName = "hangfire",
-        PrepareSchemaIfNecessary = true
-    }));
-
-builder.Services.AddHangfireServer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Version = "v1",
         Title = "Vessel API",
-        Description = "API for Vessel",
+        Description = "API for Vessel — Local Demo Mode (In-Memory DB, no Docker required)",
     });
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -58,11 +45,12 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "Bearer: {token}"
     });
-    
+
     var securityRequirement = new OpenApiSecurityRequirement();
     securityRequirement.Add(new OpenApiSecuritySchemeReference("Bearer"), new List<string>());
     options.AddSecurityRequirement(_ => securityRequirement);
 });
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -70,8 +58,7 @@ var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // False only in testing
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+        options.RequireHttpsMetadata = false; // OK for local demo
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -83,43 +70,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
-    });   
+    });
+
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("ConsumerOnly", policy => policy.RequireRole(Vessel.Core.Enums.UserRole.Consumer.ToString()))
     .AddPolicy("ProviderOnly", policy => policy.RequireRole(Vessel.Core.Enums.UserRole.Provider.ToString()))
     .AddPolicy("AdminOnly", policy => policy.RequireRole(Vessel.Core.Enums.UserRole.Admin.ToString()));
+
 builder.Services.AddApplicationServices(builder.Configuration);
+
+// Background alert job — runs every 5 minutes via a hosted service (no Hangfire/Docker needed)
+builder.Services.AddHostedService<AlertTriggerHostedService>();
+
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Always seed in-memory database on startup
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var seeder = scope.ServiceProvider.GetRequiredService<Vessel.Infrastructure.Data.DbInitializer>();
-        await seeder.InitializeAsync();
-    }
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var seeder = scope.ServiceProvider.GetRequiredService<Vessel.Infrastructure.Data.DbInitializer>();
+    await seeder.InitializeAsync();
 }
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseCors("VesselFrontend");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
-{
-    Authorization = new[] { new Vessel.API.Filters.HangfireAuthorizationFilter() }
-});
-
-// Schedule Background Jobs
-using (var scope = app.Services.CreateScope())
-{
-    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    recurringJobManager.AddOrUpdate<AlertTriggerJob>(
-        "daily-price-alert-check",
-        job => job.RunAsync(),
-        Cron.Daily);
-}
 
 app.MapControllers();
 app.MapHub<RateAlertHub>("/hubs/rates");

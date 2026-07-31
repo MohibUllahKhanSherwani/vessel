@@ -17,7 +17,6 @@ public class AlertTriggerJobTests
     private readonly Mock<IHubContext<RateAlertHub>> _mockHubContext;
     private readonly Mock<IHubClients> _mockClients;
     private readonly Mock<ISingleClientProxy> _mockClientProxy;
-    private readonly Mock<Hangfire.IBackgroundJobClient> _mockBackgroundJobClient;
 
     public AlertTriggerJobTests()
     {
@@ -28,7 +27,6 @@ public class AlertTriggerJobTests
         _mockHubContext = new Mock<IHubContext<RateAlertHub>>();
         _mockClients = new Mock<IHubClients>();
         _mockClientProxy = new Mock<ISingleClientProxy>();
-        _mockBackgroundJobClient = new Mock<Hangfire.IBackgroundJobClient>();
 
         _mockHubContext.Setup(x => x.Clients).Returns(_mockClients.Object);
         _mockClients.Setup(x => x.User(It.IsAny<string>())).Returns(_mockClientProxy.Object);
@@ -65,7 +63,7 @@ public class AlertTriggerJobTests
 
         await context.SaveChangesAsync();
 
-        var job = new AlertTriggerJob(context, _mockHubContext.Object, _mockBackgroundJobClient.Object);
+        var job = new AlertTriggerJob(context, _mockHubContext.Object);
 
         // Act
         await job.RunAsync();
@@ -108,7 +106,7 @@ public class AlertTriggerJobTests
 
         await context.SaveChangesAsync();
 
-        var job = new AlertTriggerJob(context, _mockHubContext.Object, _mockBackgroundJobClient.Object);
+        var job = new AlertTriggerJob(context, _mockHubContext.Object);
 
         // Act
         await job.RunAsync();
@@ -148,7 +146,7 @@ public class AlertTriggerJobTests
 
         await context.SaveChangesAsync();
 
-        var job = new AlertTriggerJob(context, _mockHubContext.Object, _mockBackgroundJobClient.Object);
+        var job = new AlertTriggerJob(context, _mockHubContext.Object);
 
         // Act
         await job.RunAsync();
